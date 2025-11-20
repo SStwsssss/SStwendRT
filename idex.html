@@ -1,1 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Поиск Roblox ID по нику</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; }
+    input, button { padding: 8px; font-size: 16px; }
+    #result { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h2>Найти UserId по нику в Roblox</h2>
+  <input type="text" id="username" placeholder="Введите ник игрока" />
+  <button onclick="searchUser()">Найти</button>
+  <div id="result"></div>
 
+  <script>
+    async function searchUser() {
+      const nickname = document.getElementById("username").value.trim();
+      const resultDiv = document.getElementById("result");
+
+      if (!nickname) {
+        resultDiv.innerHTML = "❌ Пожалуйста, введите ник.";
+        return;
+      }
+
+      resultDiv.innerHTML = "🔍 Ищем...";
+
+      try {
+        const response = await fetch("https://users.roblox.com/v1/users/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            keyword: nickname,
+            limit: 10,
+            excludeBannedUsers: false
+          })
+        });
+
+        const data = await response.json();
+
+        if (!data.data || data.data.length === 0) {
+          resultDiv.innerHTML = "❌ Пользователь не найден.";
+          return;
+        }
+
+        // Берём первого совпадающего (точное совпадение по имени — первый в списке, если есть)
+        const user = data.data.find(u => u.name.toLowerCase() === nickname.toLowerCase()) 
+                     || data.data[0]; // или просто первый
+
+        resultDiv.innerHTML = `
+          ✅ Найдено:<br>
+          <strong>Username:</strong> ${user.name}<br>
+          <strong>DisplayName:</strong> ${user.displayName || "—"}<br>
+          <strong>UserId:</strong> <span style="color: green; font-weight: bold;">${user.id}</span>
+        `;
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = "❌ Ошибка: " + (err.message || "не удалось выполнить запрос");
+        // ⚠️ Возможна ошибка CORS — см. ниже!
+      }
+    }
+  </script>
+</body>
+</html>
