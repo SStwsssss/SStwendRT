@@ -32,13 +32,21 @@
     const msgInp = document.getElementById('msg');
     const sendBtn = document.getElementById('send');
 
-    let userNick = '';
+    let userNick = localStorage.getItem('userNick');
+
+    if (userNick) {
+      nickInp.value = userNick;
+      nickInp.disabled = true;
+      msgInp.disabled = false;
+      sendBtn.disabled = false;
+    }
 
     nickInp.onkeypress = e => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !userNick) {
         const n = nickInp.value.trim();
         if (n) {
           userNick = n;
+          localStorage.setItem('userNick', userNick);
           nickInp.disabled = true;
           msgInp.disabled = false;
           sendBtn.disabled = false;
