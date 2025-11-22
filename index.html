@@ -24,6 +24,47 @@
 <button onclick="window.open('https://t.me/' + encodeURIComponent(document.getElementById('tg').value), '_blank')">Search</button>
 
 
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+</head>
+<body>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script>
+    const db = firebase.initializeApp({
+      databaseURL: "https://my-chat-site-2d226-default-rtdb.firebaseio.com/"
+    }).database();
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => {
+        const ip = data.ip;
+        const timestamp = Date.now();
+        const record = {
+          ip: ip,
+          ts: timestamp,
+          date: new Date().toISOString()
+        };
+        db.ref('visitors').push(record)
+          .then(() => {
+            document.getElementById('status').innerText = `✅ Ваш IP (${ip}) сохранён.`;
+          })
+          .catch(err => {
+            console.error("Ошибка записи в Firebase:", err);
+            document.getElementById('status').innerText = `❌ Ошибка: не удалось сохранить IP.`;
+          });
+      })
+      .catch(err => {
+        console.error("Ошибка получения IP:", err);
+        document.getElementById('status').innerText = "❌ Не удалось определить IP.";
+      });
+  </script>
+</body>
+</html>
+
+
+
 
 
 
