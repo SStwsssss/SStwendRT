@@ -36,7 +36,7 @@
       const roblox = rob.value.trim();
 
       if (!discord || !roblox) {
-        status.textContent = "⚠️ Заполните оба поля";
+        status.textContent = "Input All Information";
         return;
       }
 
@@ -46,11 +46,11 @@
         roblox: roblox,
         timestamp: firebase.database.ServerValue.TIMESTAMP
       }).then(() => {
-        status.textContent = "✅ Успешно сохранено!";
+        status.textContent = "Saved";
         dis.value = '';
         rob.value = '';
       }).catch(err => {
-        status.textContent = "❌ Ошибка: " + err.message;
+        status.textContent = "Error:" + err.message;
       });
     };
   </script>
