@@ -39,12 +39,11 @@
   <textarea id="code" rows="4" placeholder="print('Hello')"></textarea><br>
   <button onclick="make()">Encrypt for loadstring</button>
 
-  <h3>→ Paste this into loadstring(...):</h3>
+  <h3>Encrypted Code</h3>
   <textarea id="out" rows="8" readonly></textarea><br>
   <button onclick="copy()">Copy</button>
 
   <script>
-    // Переворачиваем hex ПОБАЙТНО (по 2 символа), а не посимвольно!
     function xorHexReverseBytes(str, key) {
       let hex = "";
       for (let i = 0; i < str.length; i++) {
@@ -53,26 +52,20 @@
         const x = c ^ k;
         hex += x.toString(16).padStart(2, '0');
       }
-      // Разбиваем на байты (по 2 символа), переворачиваем массив, склеиваем
       const bytes = hex.match(/.{1,2}/g) || [];
       return bytes.reverse().join('');
     }
-
     function make() {
       const code = document.getElementById("code").value;
       const key = "SStwendRT";
       const encrypted = xorHexReverseBytes(code, key);
-
-      // Генерируем loader, который:
-      // 1) расшифровывает строку (в прямом порядке),
-      // 2) загружает и выполняет её через loadstring
       const loader = 
         `(function()local s="${encrypted}";local k="${key}";` +
         `local bytes,d={},"";` +
         `for i=1,#s,2 do table.insert(bytes,s:sub(i,i+1)) end;` +
-        `for i=#bytes,1,-1 do` +  // обход в обратном порядке — восстанавливаем исходный порядок
+        `for i=#bytes,1,-1 do` +
         `local b=tonumber(bytes[i],16);` +
-        `local idx=((#bytes-i)%#k)+1;` +  // 1-based, корректный индекс ключа
+        `local idx=((#bytes-i)%#k)+1;` +
         `d=d..string.char(bit32.bxor(b,k:byte(idx)))` +
         `end;` +
         `return loadstring and loadstring(d) or load(d)` +
