@@ -1,55 +1,26 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Сохранить code.lua в Realtime DB</title>
-  <!-- Firebase Realtime Database (CDN) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-</head>
-<body style="font-family: Arial; padding: 20px; max-width: 800px;">
-  <h2>💾 Обновить code.lua (Realtime DB)</h2>
-  <textarea id="code" rows="15" cols="80" placeholder="Введите Lua-код для Roblox">print("Привет из Realtime DB!")
-wait(1)
-game.StarterGui:SetCore("SendNotification", {
-	Title = "Успех!",
-	Text = "Загружено из Firebase Realtime DB",
-	Duration = 3
-})</textarea><br><br>
-  <button onclick="save()" style="padding: 10px 20px; font-size: 16px;">📤 Сохранить в /code.lua</button>
-  <p id="status">Готов к сохранению...</p>
+<head><meta charset="utf-8"><title>Сохранить в Realtime DB</title></head>
+<body>
+  <h3>Введите Lua-код:</h3>
+  <textarea id="code" rows="8" cols="60">print("Работает!")</textarea><br><br>
+  <button onclick="save()">💾 Сохранить в /code.lua</button>
+  <p id="status">Готово.</p>
 
   <script>
-    // 🔑 Конфиг для Realtime Database (только projectId + databaseURL)
-    const firebaseConfig = {
-      databaseURL: "https://code-e0de9-default-rtdb.firebaseio.com"
-    };
-
-    // Инициализация (realtime db не требует apiKey)
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const codeRef = db.ref("code.lua"); // путь: /code.lua
-
-    // Загрузка текущего кода при открытии
-    codeRef.once("value").then(snapshot => {
-      const val = snapshot.val();
-      if (typeof val === "string") {
-        document.getElementById("code").value = val;
-        document.getElementById("status").innerText = "✅ Загружено из Realtime DB";
-      } else {
-        document.getElementById("status").innerText = "🆕 Нет code.lua — будет создан";
-      }
-    });
-
     function save() {
-      const content = document.getElementById("code").value;
-      codeRef.set(content) // ⚡ заменяет ВЕСЬ старый код
-        .then(() => {
-          document.getElementById("status").innerText = "✅ Успешно сохранено в /code.lua!";
-        })
-        .catch(err => {
-          document.getElementById("status").innerText = "❌ Ошибка: " + err.message;
-        });
+      const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.lua.json";
+      const code = document.getElementById("code").value;
+
+      fetch(url, {
+        method: "PUT", // ⚠️ PUT — полная замена (как ты просил)
+        body: JSON.stringify(code),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(r => r.ok ? 
+        document.getElementById("status").innerText = "✅ Успешно!" :
+        document.getElementById("status").innerText = "❌ Ошибка: " + r.status
+      );
     }
   </script>
 </body>
