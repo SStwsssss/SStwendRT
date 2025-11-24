@@ -59,17 +59,22 @@
       const code = document.getElementById("code").value;
       const key = "SStwendRT";
       const encrypted = xorHexReverseBytes(code, key);
-      const loader = 
-        `(function()local s="${encrypted}";local k="${key}";` +
-        `local bytes,d={},"";` +
-        `for i=1,#s,2 do table.insert(bytes,s:sub(i,i+1)) end;` +
-        `for i=#bytes,1,-1 do` +
-        `local b=tonumber(bytes[i],16);` +
-        `local idx=((#bytes-i)%#k)+1;` +
-        `d=d..string.char(bit32.bxor(b,k:byte(idx)))` +
-        `end;` +
-        `return loadstring and loadstring(d) or load(d)` +
-        `end)()`;
+const loader = 
+  `(function()local s="${encrypted}";local k="${key}";` +
+  `local bytes,d={},"";` +
+  `for i=1,#s,2 do table.insert(bytes,s:sub(i,i+1)) end;` +
+  `for i=#bytes,1,-1 do ` +
+    `local b=tonumber(bytes[i],16);` +
+    `if b then ` +
+      `local idx=((#bytes-i)%#k)+1;` +
+      `local c=string.char(bit32.bxor(b,k:byte(idx)));` +
+      `if c~='\0' then d=d..c end` +  // ← отбрасываем \0
+    `end` +
+  `end;` +
+  `if d==''then error'string empty (check key & data)'end;` +
+  `local f=loadstring(d);if not f then error('loadstring failed: '..tostring(d:sub(1,50)))end;` +
+  `return f` +
+  `end)()`;
 
       document.getElementById("out").value = loader;
     }
