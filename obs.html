@@ -1,42 +1,123 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>SStwendRT Encrypt</title></head>
+<head>
+  <meta charset="utf-8">
+  <title>MoonSec v3 Style Obfuscator (Demo)</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #0d0d0d;
+      color: #ccc;
+    }
+    textarea {
+      width: 100%;
+      background: #1a1a1a;
+      color: #eee;
+      border: 1px solid #444;
+      resize: vertical;
+      font-family: monospace;
+    }
+    button {
+      margin: 8px 0;
+      padding: 6px 12px;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #3a3a3a;
+    }
+    h3 {
+      color: #aaa;
+      margin-top: 16px;
+    }
+  </style>
+</head>
 <body>
-<textarea id="in" rows="3" placeholder='print("OK")'></textarea>
-<button onclick="run()">Encrypt</button>
-<br><textarea id="out" rows="6" readonly></textarea>
+  <h3>Lua Code:</h3>
+  <textarea id="code" rows="6" placeholder="print('Hello, MoonSec-style!')">local x = 42; print('Result:', x * 2)</textarea><br>
+  <button onclick="make()">Obfuscate (MoonSec v3 Style)</button>
 
-<script>
-function b64enc(s) {
-  return btoa(s).replace(/=+$/, '');
-}
-function xorRev(s, k) {
-  let r = '';
-  for (let i = 0; i < s.length; i++) {
-    r += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
-  }
-  return r.split('').reverse().join('');
-}
-function run() {
-  const src = document.getElementById('in').value;
-  const key = 'SStwendRT';
-  const enc = b64enc(xorRev(src, key));
-  
-  const loader = 
-    `(function()local s,k="${enc}","${key}"`+
-    `local b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"`+
-    `local d=""for i=1,#s,4 do`+
-      `local t=0 for j=0,3 do local c=s:sub(i+j,i+j)local v=c==""and 0or b:find(c,1,1)-1 t=t*64+v end`+
-      `d=d..string.char(bit32.band(t//65536,255))..string.char(bit32.band(t//256,255))..string.char(bit32.band(t,255))`+
-    `end`+
-    `d=d:sub(1,-(#s%4==2 and 2 or #s%4==3 and 1 or 0))`+
-    `local r=""for i=#d,1,-1 do r=r..d:sub(i,i)end`+
-    `local c=""for i=1,#r do c=c..string.char(bit32.bxor(r:byte(i),k:byte((i-1)%#k+1)))end`+
-    `return loadstring(c)end)()`;
-  
-  document.getElementById('out').value = loader;
-}
-run();
-</script>
+  <h3>Obfuscated Output</h3>
+  <textarea id="out" rows="12" readonly></textarea><br>
+  <button onclick="copy()">Copy</button>
+
+  <script>
+    // Генерация случайного имени переменной (3-6 букв)
+    function randVar() {
+      const chars = "abcdefghijklmnopqrstuvwxyz";
+      const len = 3 + Math.floor(Math.random() * 4);
+      let s = "";
+      for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return s;
+    }
+
+    // XOR + hex + reverse (без нулевых байт)
+    function obfuscateData(str, key) {
+      let hex = "";
+      for (let i = 0; i < str.length; i++) {
+        const c = str.charCodeAt(i);
+        const k = key.charCodeAt(i % key.length);
+        const x = c ^ k;
+        hex += x.toString(16).padStart(2, '0');
+      }
+      const bytes = hex.match(/.{1,2}/g) || [];
+      return bytes.reverse().join('');
+    }
+
+    function make() {
+      const code = document.getElementById("code").value.trim();
+      if (!code) return alert("Enter Lua code first!");
+
+      // Случайный ключ (фиксированный для предсказуемости, но можно рандомизировать)
+      const key = "MSv3_" + Math.random().toString(36).slice(2, 8);
+      const encrypted = obfuscateData(code, key);
+
+      // Имена для маскировки
+      const _load = randVar();
+      const _str = randVar();
+      const _key = randVar();
+      const _data = randVar();
+      const _bytes = randVar();
+      const _out = randVar();
+      const _i = randVar();
+      const _n = randVar();
+      const _b = randVar();
+      const _c = randVar();
+      const _fn = randVar();
+      const _env = randVar();
+      const _run = randVar();
+
+      const loader = 
+`(function()
+  local ${_str},${_key}="${encrypted}","${key}";
+  local ${_bytes},${_out}={},'';
+  for ${_i}=1,#${_str},2 do ${_bytes}[#(${_bytes})+1]=(${_str}):sub(${_i},${_i}+1)end;
+  for ${_n}=#(${_bytes}),1,-1 do
+    local ${_b}=tonumber(${_bytes}[${_n}],16);
+    if ${_b} then
+      local ${_c}=string.char(bit32.bxor(${_b},${_key}:byte((#(${_bytes})-${_n})%#${_key}+1)));
+      if ${_c}~='\0' then ${_out}=${_out}..${_c} end
+    end
+  end;
+  if ${_out}==''then error'corrupted data'end;
+  local ${_fn},${_env}=loadstring(${_out}),getfenv(0);
+  if not ${_fn} then error('load failed')end;
+  setfenv(${_fn},${_env});
+  return ${_fn}
+end)()`;
+
+      document.getElementById("out").value = loader;
+    }
+
+    function copy() {
+      const ta = document.getElementById("out");
+      ta.select();
+      document.execCommand("copy");
+      alert("✅ Copied to clipboard!");
+    }
+  </script>
 </body>
 </html>
