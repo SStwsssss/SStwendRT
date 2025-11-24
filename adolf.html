@@ -1,27 +1,46 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Сохранить код</title></head>
+<head>
+  <meta charset="utf-8">
+  <title>Редактор code</title>
+</head>
 <body>
   <h3>Код для Roblox:</h3>
-  <textarea id="code" rows="8" cols="60">print("Работает!")</textarea><br><br>
+  <textarea id="code" rows="10" cols="60" placeholder="Введите Lua-код">Загрузка...</textarea><br><br>
   <button onclick="save()">💾 Сохранить</button>
-  <p id="status">Готово.</p>
+  <p id="status">Ожидание...</p>
 
   <script>
-    function save() {
-      // ❗ Изменил путь: code.lua → code (убрал точку)
-      const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
-      const content = document.getElementById("code").value;
+    const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
+    const textarea = document.getElementById("code");
+    const status = document.getElementById("status");
 
+    // 🔁 Загрузка при открытии
+    fetch(url)
+      .then(r => {
+        if (r.ok) return r.json();
+        throw new Error("не найдено");
+      })
+      .then(data => {
+        textarea.value = typeof data === "string" ? data : "";
+        status.innerText = "✅ Загружено";
+      })
+      .catch(() => {
+        textarea.value = "";
+        status.innerText = "🆕 Нет сохранённого кода";
+      });
+
+    // 💾 Сохранение
+    function save() {
+      const content = textarea.value;
       fetch(url, {
         method: "PUT",
         body: JSON.stringify(content),
         headers: { "Content-Type": "application/json" }
       })
-      .then(r => r.ok 
-        ? document.getElementById("status").innerText = "✅ Успешно!" 
-        : r.text().then(t => document.getElementById("status").innerText = "❌ " + r.status + ": " + t)
-      );
+      .then(r => {
+        status.innerText = r.ok ? "✅ Сохранено!" : "❌ Ошибка: " + r.status;
+      });
     }
   </script>
 </body>
