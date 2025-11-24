@@ -2,109 +2,84 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Lua Editor — Работа с code.lua</title>
+  <title>Редактор code.lua (прямая запись)</title>
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 30px auto; padding: 20px; }
-    textarea { width: 100%; height: 280px; font-family: monospace; font-size: 14px; }
+    body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+    textarea { width: 100%; height: 300px; font-family: monospace; font-size: 14px; }
     .btn { padding: 8px 16px; margin: 4px; }
     .status { margin-top: 8px; font-size: 13px; color: #555; }
-    .saved { background: #f0f0f0; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <h2>📝 Редактор code.lua</h2>
-  <p>1. Положите <code>code.lua</code> в эту папку.<br>
-     2. Нажмите «📂 Загрузить code.lua», выберите его → код появится в поле.<br>
-     3. Редактируйте → «💾 Сохранить» → скачается обновлённый <code>code.lua</code> (замените старый).</p>
+  <h2>⚙️ Редактор code.lua — прямая запись</h2>
+  <p>1. Нажмите «📂 Открыть code.lua» → выберите <code>code.lua</code> в папке.<br>
+     2. Отредактируйте код.<br>
+     3. Нажмите «💾 Сохранить» → файл <b>перезапишется на месте</b>.<br>
+     <small>⚠️ Работает только в Chrome / Edge (через http://localhost)</small></p>
 
-  <textarea id="code" placeholder="Загрузите code.lua или введите код вручную..."></textarea><br><br>
+  <textarea id="code" placeholder="Сначала откройте code.lua..."></textarea><br><br>
 
-  <button class="btn" onclick="loadFile()">📂 Загрузить code.lua</button>
-  <button class="btn" id="saveBtn" onclick="saveFile()" disabled>💾 Сохранить (code.lua)</button>
-  <button class="btn" id="editBtn" onclick="enableEdit()" disabled>✏️ Редактировать</button>
+  <button class="btn" onclick="openFile()">📂 Открыть code.lua</button>
+  <button class="btn" id="saveBtn" onclick="saveFile()" disabled>💾 Сохранить</button>
 
-  <div class="status" id="status">Статус: ожидание загрузки...</div>
-
-  <!-- Скрытый input для выбора файла -->
-  <input type="file" id="fileInput" accept=".lua,.txt" style="display:none">
+  <div class="status" id="status">Статус: ожидание открытия файла...</div>
 
   <script>
     const codeArea = document.getElementById('code');
     const saveBtn = document.getElementById('saveBtn');
-    const editBtn = document.getElementById('editBtn');
     const statusEl = document.getElementById('status');
-    const fileInput = document.getElementById('fileInput');
 
-    let isSaved = false;
+    let fileHandle = null;
 
-    // Загрузка файла через выбор
-    function loadFile() {
-      fileInput.click();
+    // Открытие существующего code.lua (или любого .lua/.txt)
+    async function openFile() {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Lua файлы', accept: { 'text/lua': ['.lua'], 'text/plain': ['.txt'] } }],
+          multiple: false
+        });
+        fileHandle = handle;
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        codeArea.value = content;
+        saveBtn.disabled = false;
+        statusEl.textContent = `✅ Открыт: ${file.name}`;
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          statusEl.textContent = '❌ Ошибка: ' + (err.message || err);
+        }
+      }
     }
 
-    fileInput.onchange = () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        codeArea.value = e.target.result;
-        isSaved = true;
-        updateUI();
-        statusEl.textContent = `✅ Загружен: ${file.name} (${Math.round(file.size)} байт)`;
-      };
-      reader.onerror = () => {
-        statusEl.textContent = "❌ Ошибка чтения файла";
-      };
-      reader.readAsText(file, 'utf-8');
-    };
-
-    function enableEdit() {
-      isSaved = false;
-      updateUI();
-      codeArea.focus();
-    }
-
-    function saveFile() {
+    // Сохранение в тот же fileHandle (перезапись!)
+    async function saveFile() {
       const code = codeArea.value;
       if (!code.trim()) {
         alert('⚠️ Код пустой!');
         return;
       }
 
-      const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'code.lua'; // ← всегда code.lua
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (!fileHandle) {
+        alert('⚠️ Сначала откройте файл через «Открыть code.lua»!');
+        return;
+      }
 
-      isSaved = true;
-      updateUI();
-      statusEl.textContent = '✅ code.lua сохранён (замените им старый файл в папке)';
-    }
-
-    function updateUI() {
-      if (isSaved) {
-        codeArea.classList.add('saved');
-        codeArea.setAttribute('readonly', 'true');
-        saveBtn.disabled = true;
-        editBtn.disabled = false;
-      } else {
-        codeArea.classList.remove('saved');
-        codeArea.removeAttribute('readonly');
-        saveBtn.disabled = false;
-        editBtn.disabled = true;
+      try {
+        const writable = await fileHandle.createWritable();
+        await writable.write(code);
+        await writable.close();
+        statusEl.textContent = '✅ Успешно сохранено в code.lua (на месте!)';
+      } catch (err) {
+        statusEl.textContent = '❌ Ошибка записи: ' + (err.message || err);
       }
     }
 
-    // Изначально кнопка "Сохранить" активна, если введён код вручную
+    // Enable save if typing before opening (optional)
     codeArea.addEventListener('input', () => {
-      if (!isSaved && codeArea.value.trim()) {
-        saveBtn.disabled = false;
+      if (codeArea.value.trim()) {
+        if (!fileHandle && saveBtn.disabled) {
+          saveBtn.title = 'Сначала откройте файл';
+        }
       }
     });
   </script>
