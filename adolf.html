@@ -2,143 +2,111 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Lua Editor — Сохранение в code.lua</title>
+  <title>Lua Editor — Работа с code.lua</title>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      max-width: 800px;
-      margin: 30px auto;
-      padding: 20px;
-      background: #fafafa;
-    }
-    h2 { color: #333; }
-    textarea {
-      width: 100%;
-      height: 300px;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      resize: vertical;
-    }
-    .controls { margin-top: 10px; }
-    button {
-      padding: 8px 16px;
-      margin-right: 8px;
-      font-size: 14px;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .saved-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(240, 240, 240, 0.7);
-      border-radius: 4px;
-      pointer-events: none;
-    }
-    .saved-indicator {
-      position: absolute;
-      top: 5px;
-      right: 10px;
-      font-size: 12px;
-      color: #666;
-      background: #e0e0e0;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
+    body { font-family: sans-serif; max-width: 800px; margin: 30px auto; padding: 20px; }
+    textarea { width: 100%; height: 280px; font-family: monospace; font-size: 14px; }
+    .btn { padding: 8px 16px; margin: 4px; }
+    .status { margin-top: 8px; font-size: 13px; color: #555; }
+    .saved { background: #f0f0f0; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <h2>📝 Lua-редактор для Roblox</h2>
-  <p>Введите код → сохраните → он зафиксируется и запишется в <code>code.lua</code>.<br>
-     Нажмите «✏️ Редактировать», чтобы изменить.</p>
+  <h2>📝 Редактор code.lua</h2>
+  <p>1. Положите <code>code.lua</code> в эту папку.<br>
+     2. Нажмите «📂 Загрузить code.lua», выберите его → код появится в поле.<br>
+     3. Редактируйте → «💾 Сохранить» → скачается обновлённый <code>code.lua</code> (замените старый).</p>
 
-  <div style="position: relative;">
-    <textarea id="luaInput" placeholder="Например: print('Привет из Roblox!')">-- Ваш Lua-код здесь
-print("Запуск...")
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Успех!",
-    Text = "Код загружен и выполнен!",
-    Duration = 4
-})</textarea>
-    <div id="overlay" style="display: none;">
-      <div class="saved-overlay"></div>
-      <div class="saved-indicator">💾 Сохранено</div>
-    </div>
-  </div>
+  <textarea id="code" placeholder="Загрузите code.lua или введите код вручную..."></textarea><br><br>
 
-  <div class="controls">
-    <button id="saveBtn" onclick="saveCode()">💾 Сохранить</button>
-    <button id="editBtn" onclick="editCode()" disabled>✏️ Редактировать</button>
-  </div>
+  <button class="btn" onclick="loadFile()">📂 Загрузить code.lua</button>
+  <button class="btn" id="saveBtn" onclick="saveFile()" disabled>💾 Сохранить (code.lua)</button>
+  <button class="btn" id="editBtn" onclick="enableEdit()" disabled>✏️ Редактировать</button>
+
+  <div class="status" id="status">Статус: ожидание загрузки...</div>
+
+  <!-- Скрытый input для выбора файла -->
+  <input type="file" id="fileInput" accept=".lua,.txt" style="display:none">
 
   <script>
-    const input = document.getElementById('luaInput');
-    const overlay = document.getElementById('overlay');
+    const codeArea = document.getElementById('code');
     const saveBtn = document.getElementById('saveBtn');
     const editBtn = document.getElementById('editBtn');
+    const statusEl = document.getElementById('status');
+    const fileInput = document.getElementById('fileInput');
 
-    // Загружаем сохранённый код при открытии
-    window.onload = () => {
-      const saved = localStorage.getItem('robloxLuaCode');
-      if (saved) {
-        input.value = saved;
-        setSavedState(true);
-      }
-    };
+    let isSaved = false;
 
-    function setSavedState(saved = false) {
-      if (saved) {
-        overlay.style.display = 'block';
-        input.setAttribute('readonly', 'true');
-        input.style.backgroundColor = '#f5f5f5';
-        saveBtn.disabled = true;
-        editBtn.disabled = false;
-      } else {
-        overlay.style.display = 'none';
-        input.removeAttribute('readonly');
-        input.style.backgroundColor = '#fff';
-        saveBtn.disabled = false;
-        editBtn.disabled = true;
-      }
+    // Загрузка файла через выбор
+    function loadFile() {
+      fileInput.click();
     }
 
-    function saveCode() {
-      const code = input.value;
+    fileInput.onchange = () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        codeArea.value = e.target.result;
+        isSaved = true;
+        updateUI();
+        statusEl.textContent = `✅ Загружен: ${file.name} (${Math.round(file.size)} байт)`;
+      };
+      reader.onerror = () => {
+        statusEl.textContent = "❌ Ошибка чтения файла";
+      };
+      reader.readAsText(file, 'utf-8');
+    };
+
+    function enableEdit() {
+      isSaved = false;
+      updateUI();
+      codeArea.focus();
+    }
+
+    function saveFile() {
+      const code = codeArea.value;
       if (!code.trim()) {
         alert('⚠️ Код пустой!');
         return;
       }
 
-      // Сохраняем в localStorage
-      localStorage.setItem('robloxLuaCode', code);
-
-      // Скачиваем как code.lua
       const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'code.lua';
+      a.download = 'code.lua'; // ← всегда code.lua
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // Переключаем интерфейс в режим "сохранено"
-      setSavedState(true);
-      alert('✅ Код сохранён!\nФайл code.lua скачан.\nПоложите его в папку и загрузите на GitHub Pages.');
+      isSaved = true;
+      updateUI();
+      statusEl.textContent = '✅ code.lua сохранён (замените им старый файл в папке)';
     }
 
-    function editCode() {
-      setSavedState(false);
-      input.focus();
+    function updateUI() {
+      if (isSaved) {
+        codeArea.classList.add('saved');
+        codeArea.setAttribute('readonly', 'true');
+        saveBtn.disabled = true;
+        editBtn.disabled = false;
+      } else {
+        codeArea.classList.remove('saved');
+        codeArea.removeAttribute('readonly');
+        saveBtn.disabled = false;
+        editBtn.disabled = true;
+      }
     }
+
+    // Изначально кнопка "Сохранить" активна, если введён код вручную
+    codeArea.addEventListener('input', () => {
+      if (!isSaved && codeArea.value.trim()) {
+        saveBtn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>
