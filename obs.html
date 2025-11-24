@@ -4,18 +4,45 @@
   <meta charset="utf-8">
   <title>SStwendRT Encrypt</title>
   <style>
-    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
-    textarea { width: 100%; background: #000; color: #0f0; border: 1px solid #0a0; }
-    button { margin: 8px 0; padding: 6px 12px; background: #080; color: #fff; }
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #000;
+      color: #ccc;
+    }
+    textarea {
+      width: 100%;
+      background: #111;
+      color: #eee;
+      border: 1px solid #444;
+      resize: vertical;
+    }
+    button {
+      margin: 8px 0;
+      padding: 6px 12px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #444;
+    }
+    h3 {
+      color: #aaa;
+      margin-top: 16px;
+    }
   </style>
 </head>
 <body>
   <h3>Lua Code:</h3>
-  <textarea id="code" rows="4" placeholder='. . .'></textarea><br>
+  <textarea id="code" rows="4" placeholder=". . ."></textarea><br>
   <button onclick="make()">Encrypt</button>
+
   <h3>Encrypted Code:</h3>
   <textarea id="out" rows="6" readonly></textarea><br>
   <button onclick="copy()">Copy</button>
+
   <script>
     function xorHexReverse(str, key) {
       let hex = "";
@@ -27,22 +54,24 @@
       }
       return hex.split('').reverse().join('');
     }
+
     function make() {
       const code = document.getElementById("code").value;
       const key = "SStwendRT";
       const encrypted = xorHexReverse(code, key);
       const loader = `(function()local s="${encrypted}";local k="${key}";local d="";for i=1,#s,2 do local b=tonumber(s:sub(i,i+1),16);d=string.char(bit32.bxor(b,k:byte((i/2)%#k+1)))..d end;return d end)()`;
-      
       document.getElementById("out").value = loader;
     }
+
     function copy() {
       const ta = document.getElementById("out");
       ta.select();
       document.execCommand("copy");
-      alert("Copyed");
+      alert("Copied");
     }
 
-    make();
+    // Запуск по умолчанию (опционально — можно убрать, если не нужно)
+    // make();
   </script>
 </body>
 </html>
