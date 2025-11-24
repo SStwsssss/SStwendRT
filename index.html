@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Access</title>
+</head>
+<body>
+  <h2>Input Code:</h2>
+  <input type="password" id="passwordInput" placeholder="Пароль">
+  <button onclick="checkPassword()">Open</button>
+
+  <script>
+    function checkPassword() {
+      const input = document.getElementById('passwordInput').value;
+      const correctPassword = "SPDUSTSStwendRT"; // ← замените на нужный пароль
+
+      if (input === correctPassword) {
+        window.location.href = "indexr.html"; // переход на другую страницу
+      } else {
+        alert(". . .");
+      }
+    }
+  </script>
+</body>
+</html>
