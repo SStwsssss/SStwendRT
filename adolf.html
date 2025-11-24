@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Lua Editor — Сохранение в code.lua</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #fafafa;
+    }
+    h2 { color: #333; }
+    textarea {
+      width: 100%;
+      height: 300px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+    }
+    .controls { margin-top: 10px; }
+    button {
+      padding: 8px 16px;
+      margin-right: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .saved-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(240, 240, 240, 0.7);
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    .saved-indicator {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 12px;
+      color: #666;
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📝 Lua-редактор для Roblox</h2>
+  <p>Введите код → сохраните → он зафиксируется и запишется в <code>code.lua</code>.<br>
+     Нажмите «✏️ Редактировать», чтобы изменить.</p>
+
+  <div style="position: relative;">
+    <textarea id="luaInput" placeholder="Например: print('Привет из Roblox!')">-- Ваш Lua-код здесь
+print("Запуск...")
+game.StarterGui:SetCore("SendNotification", {
+    Title = "Успех!",
+    Text = "Код загружен и выполнен!",
+    Duration = 4
+})</textarea>
+    <div id="overlay" style="display: none;">
+      <div class="saved-overlay"></div>
+      <div class="saved-indicator">💾 Сохранено</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="saveBtn" onclick="saveCode()">💾 Сохранить</button>
+    <button id="editBtn" onclick="editCode()" disabled>✏️ Редактировать</button>
+  </div>
+
+  <script>
+    const input = document.getElementById('luaInput');
+    const overlay = document.getElementById('overlay');
+    const saveBtn = document.getElementById('saveBtn');
+    const editBtn = document.getElementById('editBtn');
+
+    // Загружаем сохранённый код при открытии
+    window.onload = () => {
+      const saved = localStorage.getItem('robloxLuaCode');
+      if (saved) {
+        input.value = saved;
+        setSavedState(true);
+      }
+    };
+
+    function setSavedState(saved = false) {
+      if (saved) {
+        overlay.style.display = 'block';
+        input.setAttribute('readonly', 'true');
+        input.style.backgroundColor = '#f5f5f5';
+        saveBtn.disabled = true;
+        editBtn.disabled = false;
+      } else {
+        overlay.style.display = 'none';
+        input.removeAttribute('readonly');
+        input.style.backgroundColor = '#fff';
+        saveBtn.disabled = false;
+        editBtn.disabled = true;
+      }
+    }
+
+    function saveCode() {
+      const code = input.value;
+      if (!code.trim()) {
+        alert('⚠️ Код пустой!');
+        return;
+      }
+
+      // Сохраняем в localStorage
+      localStorage.setItem('robloxLuaCode', code);
+
+      // Скачиваем как code.lua
+      const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'code.lua';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Переключаем интерфейс в режим "сохранено"
+      setSavedState(true);
+      alert('✅ Код сохранён!\nФайл code.lua скачан.\nПоложите его в папку и загрузите на GitHub Pages.');
+    }
+
+    function editCode() {
+      setSavedState(false);
+      input.focus();
+    }
+  </script>
+</body>
+</html>
