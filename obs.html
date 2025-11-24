@@ -1,83 +1,42 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>SStwendRT Encrypt</title>
-  <style>
-    body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
-    textarea { width: 100%; background: #000; color: #0f0; border: 1px solid #0a0; }
-    button { margin: 8px 0; padding: 6px 12px; background: #080; color: #fff; }
-  </style>
-</head>
+<head><meta charset="utf-8"><title>Roblox Loader</title></head>
 <body>
-  <h3>Lua Code:</h3>
-  <textarea id="code" rows="4" placeholder='print("test")'>wait(1) print("✅ Success!")</textarea><br>
-  <button onclick="make()">Encrypt</button>
+<textarea id="in" rows="3" placeholder='print("OK")'>print("✅ Success!")</textarea>
+<button onclick="run()">🔐 Encrypt</button>
+<br><textarea id="out" rows="6" readonly></textarea>
 
-  <h3>Encrypt Code:</h3>
-  <textarea id="out" rows="8" readonly></textarea><br>
-  <button onclick="copy()">Copy</button>
-
-  <script>
-    // Base64 encode (без =)
-    const b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-    function base64Encode(data) {
-      let result = '', i = 0, len = data.length;
-      while (i < len) {
-        const c1 = data.charCodeAt(i++),
-              c2 = data.charCodeAt(i++),
-              c3 = data.charCodeAt(i++);
-        const b1 = c1 >> 2,
-              b2 = ((c1 & 3) << 4) | (c2 >> 4),
-              b3 = ((c2 & 15) << 2) | (c3 >> 6),
-              b4 = c3 & 63;
-        result += b64chars[b1] + b64chars[b2] +
-                  (i <= len ? b64chars[b3] : '') +
-                  (i <= len - 1 ? b64chars[b4] : '');
-      }
-      return result;
-    }
-
-    function make() {
-      const code = document.getElementById("code").value;
-      const key = "SStwendRT";
-
-      // XOR + reverse строки
-      let xored = "";
-      for (let i = 0; i < code.length; i++) {
-        xored += String.fromCharCode(code.charCodeAt(i) ^ key.charCodeAt(i % key.length));
-      }
-      const reversed = xored.split('').reverse().join('');
-      const encoded = base64Encode(reversed);
-
-      // Генерируем loader
-      const loader = 
-        `(function()local s="${encoded}",k="${key}"` +
-        // Base64 decode (минималистичный, без =)
-        `local b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"` +
-        `local d,i,o={},1 while i<=#s do` +
-          `local c1,c2,c3,c4=b:find(s:sub(i,i),1,1),b:find(s:sub(i+1,i+1),1,1),b:find(s:sub(i+2,i+2),1,1),b:find(s:sub(i+3,i+3),1,1)` +
-          `c1,c2,c3,c4=c1 and c1-1 or 0,c2 and c2-1 or 0,c3 and c3-1 or 64,c4 and c4-1 or 64` +
-          `local n=(c1*64+c2)*64+c3` +
-          `d[o],d[o+1],d[o+2]=string.char(bit32.band(n,255)),(c3<64)and string.char(bit32.band(n//64,255))or nil,(c4<64)and string.char(bit32.band(n//4096,255))or nil` +
-          `o=o+1 if c3<64 then o=o+1 end if c4<64 then o=o+1 end i=i+4` +
-        `end` +
-        `local r=table.concat(d)` +
-        // reverse + XOR
-        `local x=""for i=#r,1,-1 do x=x..r:sub(i,i)end` +
-        `local t=""for i=1,#x do t=t..string.char(bit32.bxor(x:byte(i),k:byte((i-1)%#k+1)))end` +
-        `return loadstring(t)end)()`;
-
-      document.getElementById("out").value = loader;
-    }
-
-    function copy() {
-      document.getElementById("out").select();
-      document.execCommand("copy");
-      alert("✅ Copied!");
-    }
-
-    make();
-  </script>
+<script>
+function b64enc(s) {
+  return btoa(s).replace(/=+$/, '');
+}
+function xorRev(s, k) {
+  let r = '';
+  for (let i = 0; i < s.length; i++) {
+    r += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+  }
+  return r.split('').reverse().join('');
+}
+function run() {
+  const src = document.getElementById('in').value;
+  const key = 'SStwendRT';
+  const enc = b64enc(xorRev(src, key));
+  
+  const loader = 
+    `(function()local s,k="${enc}","${key}"`+
+    `local b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"`+
+    `local d=""for i=1,#s,4 do`+
+      `local t=0 for j=0,3 do local c=s:sub(i+j,i+j)local v=c==""and 0or b:find(c,1,1)-1 t=t*64+v end`+
+      `d=d..string.char(bit32.band(t//65536,255))..string.char(bit32.band(t//256,255))..string.char(bit32.band(t,255))`+
+    `end`+
+    `d=d:sub(1,-(#s%4==2 and 2 or #s%4==3 and 1 or 0))`+
+    `local r=""for i=#d,1,-1 do r=r..d:sub(i,i)end`+
+    `local c=""for i=1,#r do c=c..string.char(bit32.bxor(r:byte(i),k:byte((i-1)%#k+1)))end`+
+    `return loadstring(c)end)()`;
+  
+  document.getElementById('out').value = loader;
+}
+run();
+</script>
 </body>
 </html>
