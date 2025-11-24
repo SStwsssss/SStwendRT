@@ -1,26 +1,33 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Сохранить в Realtime DB</title></head>
+<head><meta charset="utf-8"><title>Сохранить code.lua</title></head>
 <body>
-  <h3>Введите Lua-код:</h3>
-  <textarea id="code" rows="8" cols="60">print("Работает!")</textarea><br><br>
-  <button onclick="save()">💾 Сохранить в /code.lua</button>
+  <h3>Код для Roblox:</h3>
+  <textarea id="code" rows="10" cols="60" placeholder="print('Привет!')">print("Привет из облака!")</textarea><br><br>
+  <button onclick="save()">💾 Сохранить в Realtime DB</button>
   <p id="status">Готово.</p>
 
   <script>
     function save() {
       const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.lua.json";
       const code = document.getElementById("code").value;
-
+      
       fetch(url, {
-        method: "PUT", // ⚠️ PUT — полная замена (как ты просил)
+        method: "PUT",
         body: JSON.stringify(code),
         headers: { "Content-Type": "application/json" }
       })
-      .then(r => r.ok ? 
-        document.getElementById("status").innerText = "✅ Успешно!" :
-        document.getElementById("status").innerText = "❌ Ошибка: " + r.status
-      );
+      .then(r => {
+        if (r.ok) {
+          document.getElementById("status").innerText = "✅ Успешно!";
+          // Проверим: откроем результат в новой вкладке через 1 сек
+          setTimeout(() => window.open(url, "_blank"), 1000);
+        } else {
+          r.text().then(t => {
+            document.getElementById("status").innerText = "❌ " + r.status + ": " + (t || "доступ запрещён");
+          });
+        }
+      });
     }
   </script>
 </body>
