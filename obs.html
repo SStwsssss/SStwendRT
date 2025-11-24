@@ -4,94 +4,79 @@
   <meta charset="utf-8">
   <title>SStwendRT Encrypt</title>
   <style>
-    body {
-      font-family: monospace;
-      padding: 20px;
-      background: #000;
-      color: #ccc;
-    }
-    textarea {
-      width: 100%;
-      background: #111;
-      color: #eee;
-      border: 1px solid #444;
-      resize: vertical;
-    }
-    button {
-      margin: 8px 0;
-      padding: 6px 12px;
-      background: #333;
-      color: #fff;
-      border: 1px solid #555;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #444;
-    }
-    h3 {
-      color: #aaa;
-      margin-top: 16px;
-    }
+    body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
+    textarea { width: 100%; background: #000; color: #0f0; border: 1px solid #0a0; }
+    button { margin: 8px 0; padding: 6px 12px; background: #080; color: #fff; }
   </style>
 </head>
 <body>
   <h3>Lua Code:</h3>
-  <textarea id="code" rows="4" placeholder="print('Hello')">print("SStwendRT works!")</textarea><br>
-  <button onclick="make()">🔒 Encrypt for loadstring</button>
+  <textarea id="code" rows="4" placeholder='print("test")'>wait(1) print("✅ Success!")</textarea><br>
+  <button onclick="make()">Encrypt</button>
 
-  <h3>→ Paste this into Roblox:</h3>
+  <h3>Encrypt Code:</h3>
   <textarea id="out" rows="8" readonly></textarea><br>
-  <button onclick="copy()">📋 Copy</button>
+  <button onclick="copy()">Copy</button>
 
   <script>
-    // Шифруем: XOR + 1 (чтобы гарантированно не было 0), затем hex, затем reverse bytes
-    function safeXorHexReverse(str, key) {
-      let hex = "";
-      for (let i = 0; i < str.length; i++) {
-        const c = str.charCodeAt(i);
-        const k = key.charCodeAt(i % key.length);
-        // +1 гарантирует: 1..256 → при расшифровке: -1 → 0..255
-        const x = ((c ^ k) + 1) & 0xFF; // &0xFF — на случай overflow
-        hex += x.toString(16).padStart(2, '0');
+    // Base64 encode (без =)
+    const b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    function base64Encode(data) {
+      let result = '', i = 0, len = data.length;
+      while (i < len) {
+        const c1 = data.charCodeAt(i++),
+              c2 = data.charCodeAt(i++),
+              c3 = data.charCodeAt(i++);
+        const b1 = c1 >> 2,
+              b2 = ((c1 & 3) << 4) | (c2 >> 4),
+              b3 = ((c2 & 15) << 2) | (c3 >> 6),
+              b4 = c3 & 63;
+        result += b64chars[b1] + b64chars[b2] +
+                  (i <= len ? b64chars[b3] : '') +
+                  (i <= len - 1 ? b64chars[b4] : '');
       }
-      const bytes = hex.match(/.{1,2}/g) || [];
-      return bytes.reverse().join('');
+      return result;
     }
 
     function make() {
       const code = document.getElementById("code").value;
       const key = "SStwendRT";
-      const encrypted = safeXorHexReverse(code, key);
 
-      // Генерируем loader: расшифровка + loadstring + выполнение
-      // Всё в одной строке, без внешних зависимостей, безопасно для Roblox
+      // XOR + reverse строки
+      let xored = "";
+      for (let i = 0; i < code.length; i++) {
+        xored += String.fromCharCode(code.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      }
+      const reversed = xored.split('').reverse().join('');
+      const encoded = base64Encode(reversed);
+
+      // Генерируем loader
       const loader = 
-        `(function()local s="${encrypted}",k="${key}",bytes,d={},""` +
-        `for i=1,#s,2 do table.insert(bytes,s:sub(i,i+1))end` +
-        `for i=#bytes,1,-1 do` +
-          `local b=tonumber(bytes[i],16)` +
-          `if b then` +
-            `local idx=(#bytes-i)%#k+1` +
-            `d=d..string.char(bit32.bxor(b-1,k:byte(idx)))` + // ← -1 обратно
-          `end` +
+        `(function()local s="${encoded}",k="${key}"` +
+        // Base64 decode (минималистичный, без =)
+        `local b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"` +
+        `local d,i,o={},1 while i<=#s do` +
+          `local c1,c2,c3,c4=b:find(s:sub(i,i),1,1),b:find(s:sub(i+1,i+1),1,1),b:find(s:sub(i+2,i+2),1,1),b:find(s:sub(i+3,i+3),1,1)` +
+          `c1,c2,c3,c4=c1 and c1-1 or 0,c2 and c2-1 or 0,c3 and c3-1 or 64,c4 and c4-1 or 64` +
+          `local n=(c1*64+c2)*64+c3` +
+          `d[o],d[o+1],d[o+2]=string.char(bit32.band(n,255)),(c3<64)and string.char(bit32.band(n//64,255))or nil,(c4<64)and string.char(bit32.band(n//4096,255))or nil` +
+          `o=o+1 if c3<64 then o=o+1 end if c4<64 then o=o+1 end i=i+4` +
         `end` +
-        `if type(d)~="string"or#d<1 then error("decryption failed")end` +
-        `local f=loadstring(d)` +
-        `if not f then error("loadstring: "..(d:sub(1,40).."..."))end` +
-        `return f` +
-        `end)()`;
+        `local r=table.concat(d)` +
+        // reverse + XOR
+        `local x=""for i=#r,1,-1 do x=x..r:sub(i,i)end` +
+        `local t=""for i=1,#x do t=t..string.char(bit32.bxor(x:byte(i),k:byte((i-1)%#k+1)))end` +
+        `return loadstring(t)end)()`;
 
       document.getElementById("out").value = loader;
     }
 
     function copy() {
-      const ta = document.getElementById("out");
-      ta.select();
+      document.getElementById("out").select();
       document.execCommand("copy");
-      alert("✅ Copied to clipboard!");
+      alert("✅ Copied!");
     }
 
-    // Автогенерация при открытии (удалите, если не нужно)
     make();
   </script>
 </body>
