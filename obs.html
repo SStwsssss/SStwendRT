@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Self-Decrypt Loader</title>
+  <title>SStwendRT Encrypt</title>
   <style>
     body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
     textarea { width: 100%; background: #000; color: #0f0; border: 1px solid #0a0; }
@@ -10,13 +10,12 @@
   </style>
 </head>
 <body>
-  <h3>🔒 Введите Lua-код:</h3>
-  <textarea id="code" rows="4" placeholder='print("Секрет!")'>print("Привет из облака!")</textarea><br>
-  <button onclick="make()">⚙️ Сгенерировать loadstring(...)</button>
+  <h3>Lua Code:</h3>
+  <textarea id="code" rows="4" placeholder='. . .'>. . .</textarea><br>
+  <button onclick="make()">Encrypt</button>
   <h3>📤 Результат (вставь в loadstring):</h3>
   <textarea id="out" rows="6" readonly></textarea><br>
-  <button onclick="copy()">📋 Копировать всё</button>
-
+  <button onclick="copy()">Copy</button>
   <script>
     function xorHexReverse(str, key) {
       let hex = "";
@@ -28,18 +27,14 @@
       }
       return hex.split('').reverse().join('');
     }
-
     function make() {
       const code = document.getElementById("code").value;
       const key = "SStwendRT";
       const encrypted = xorHexReverse(code, key);
-      
-      // Генерируем компактный self-decrypting loader
       const loader = `(function()local s="${encrypted}";local k="${key}";local d="";for i=1,#s,2 do local b=tonumber(s:sub(i,i+1),16);d=string.char(bit32.bxor(b,k:byte((i/2)%#k+1)))..d end;return d end)()`;
       
       document.getElementById("out").value = loader;
     }
-
     function copy() {
       const ta = document.getElementById("out");
       ta.select();
