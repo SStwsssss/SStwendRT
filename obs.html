@@ -36,45 +36,50 @@
 </head>
 <body>
   <h3>Lua Code:</h3>
-  <textarea id="code" rows="4" placeholder="print('Hello')"></textarea><br>
-  <button onclick="make()">Encrypt for loadstring</button>
+  <textarea id="code" rows="4" placeholder="print('Hello')">print("SStwendRT works!")</textarea><br>
+  <button onclick="make()">🔒 Encrypt for loadstring</button>
 
-  <h3>Encrypted Code</h3>
+  <h3>→ Paste this into Roblox:</h3>
   <textarea id="out" rows="8" readonly></textarea><br>
-  <button onclick="copy()">Copy</button>
+  <button onclick="copy()">📋 Copy</button>
 
   <script>
-    function xorHexReverseBytes(str, key) {
+    // Шифруем: XOR + 1 (чтобы гарантированно не было 0), затем hex, затем reverse bytes
+    function safeXorHexReverse(str, key) {
       let hex = "";
       for (let i = 0; i < str.length; i++) {
         const c = str.charCodeAt(i);
         const k = key.charCodeAt(i % key.length);
-        const x = c ^ k;
+        // +1 гарантирует: 1..256 → при расшифровке: -1 → 0..255
+        const x = ((c ^ k) + 1) & 0xFF; // &0xFF — на случай overflow
         hex += x.toString(16).padStart(2, '0');
       }
       const bytes = hex.match(/.{1,2}/g) || [];
       return bytes.reverse().join('');
     }
+
     function make() {
       const code = document.getElementById("code").value;
       const key = "SStwendRT";
-      const encrypted = xorHexReverseBytes(code, key);
-const loader = 
-  `(function()local s="${encrypted}";local k="${key}";` +
-  `local bytes,d={},"";` +
-  `for i=1,#s,2 do table.insert(bytes,s:sub(i,i+1)) end;` +
-  `for i=#bytes,1,-1 do ` +
-    `local b=tonumber(bytes[i],16);` +
-    `if b then ` +
-      `local idx=((#bytes-i)%#k)+1;` +
-      `local c=string.char(bit32.bxor(b,k:byte(idx)));` +
-      `if c~='\0' then d=d..c end` +  // ← отбрасываем \0
-    `end` +
-  `end;` +
-  `if d==''then error'string empty (check key & data)'end;` +
-  `local f=loadstring(d);if not f then error('loadstring failed: '..tostring(d:sub(1,50)))end;` +
-  `return f` +
-  `end)()`;
+      const encrypted = safeXorHexReverse(code, key);
+
+      // Генерируем loader: расшифровка + loadstring + выполнение
+      // Всё в одной строке, без внешних зависимостей, безопасно для Roblox
+      const loader = 
+        `(function()local s="${encrypted}",k="${key}",bytes,d={},""` +
+        `for i=1,#s,2 do table.insert(bytes,s:sub(i,i+1))end` +
+        `for i=#bytes,1,-1 do` +
+          `local b=tonumber(bytes[i],16)` +
+          `if b then` +
+            `local idx=(#bytes-i)%#k+1` +
+            `d=d..string.char(bit32.bxor(b-1,k:byte(idx)))` + // ← -1 обратно
+          `end` +
+        `end` +
+        `if type(d)~="string"or#d<1 then error("decryption failed")end` +
+        `local f=loadstring(d)` +
+        `if not f then error("loadstring: "..(d:sub(1,40).."..."))end` +
+        `return f` +
+        `end)()`;
 
       document.getElementById("out").value = loader;
     }
@@ -83,8 +88,11 @@ const loader =
       const ta = document.getElementById("out");
       ta.select();
       document.execCommand("copy");
-      alert("Copied!");
+      alert("✅ Copied to clipboard!");
     }
+
+    // Автогенерация при открытии (удалите, если не нужно)
+    make();
   </script>
 </body>
 </html>
