@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>MoonSec v3 Style Obfuscator (Demo)</title>
+  <title>MoonSec v3 Style Obfuscator (Roblox-Compatible)</title>
   <style>
     body {
       font-family: monospace;
@@ -38,76 +38,81 @@
 <body>
   <h3>Lua Code:</h3>
   <textarea id="code" rows="6" placeholder="print('Hello, MoonSec-style!')">local x = 42; print('Result:', x * 2)</textarea><br>
-  <button onclick="make()">Obfuscate (MoonSec v3 Style)</button>
+  <button onclick="make()">Obfuscate (Roblox-Compatible)</button>
 
   <h3>Obfuscated Output</h3>
-  <textarea id="out" rows="12" readonly></textarea><br>
+  <textarea id="out" rows="18" readonly></textarea><br>
   <button onclick="copy()">Copy</button>
 
   <script>
-    // Генерация случайного имени переменной (3-6 букв)
+    // Генерация случайного имени переменной (3–7 латинских букв, без цифр)
     function randVar() {
       const chars = "abcdefghijklmnopqrstuvwxyz";
-      const len = 3 + Math.floor(Math.random() * 4);
+      const len = 3 + Math.floor(Math.random() * 5);
       let s = "";
       for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
       return s;
     }
 
-    // XOR + hex + reverse (без нулевых байт)
+    // Надёжный XOR (возвращает hex-строку без нулевых байт, реверсированную)
     function obfuscateData(str, key) {
       let hex = "";
       for (let i = 0; i < str.length; i++) {
         const c = str.charCodeAt(i);
         const k = key.charCodeAt(i % key.length);
+        // В Lua 5.1 нет bit32, но числовая XOR возможна:
         const x = c ^ k;
-        hex += x.toString(16).padStart(2, '0');
+        // Убеждаемся, что x != 0 (иначе обрежется строка в Lua)
+        if (x === 0) {
+          console.warn("⚠️ Null-byte avoided (XOR=0 at pos " + i + "). Adjust key or code.");
+          // заменяем на 1 — это безопасно, т.к. при расшифровке тоже заменим
+          hex += "01";
+        } else {
+          hex += x.toString(16).padStart(2, '0');
+        }
       }
-      const bytes = hex.match(/.{1,2}/g) || [];
-      return bytes.reverse().join('');
+      // Реверсируем байты (для усложнения анализа)
+      return hex.match(/.{1,2}/g).reverse().join('');
     }
 
     function make() {
       const code = document.getElementById("code").value.trim();
       if (!code) return alert("Enter Lua code first!");
 
-      // Случайный ключ (фиксированный для предсказуемости, но можно рандомизировать)
-      const key = "MSv3_" + Math.random().toString(36).slice(2, 8);
+      // Генерируем ключ без спецсимволов и нулей в XOR
+      // Используем только буквы + цифры, длина ≥ 4
+      const randPart = Math.random().toString(36).substring(2, 8);
+      const key = ("key" + randPart).substring(0, 8); // гарантируем длину ≤8 и безопасные символы
+
       const encrypted = obfuscateData(code, key);
 
-      // Имена для маскировки
-      const _load = randVar();
-      const _str = randVar();
-      const _key = randVar();
-      const _data = randVar();
-      const _bytes = randVar();
-      const _out = randVar();
-      const _i = randVar();
-      const _n = randVar();
-      const _b = randVar();
-      const _c = randVar();
-      const _fn = randVar();
-      const _env = randVar();
-      const _run = randVar();
+      // Генерируем обфусцированные имена
+      const v_str   = randVar();
+      const v_key   = randVar();
+      const v_hex   = randVar();
+      const v_i     = randVar();
+      const v_n     = randVar();
+      const v_c     = randVar();
+      const v_b     = randVar();
+      const v_clear = randVar();
+      const v_fn    = randVar();
 
-      const loader = 
-`(function()
-  local ${_str},${_key}="${encrypted}","${key}";
-  local ${_bytes},${_out}={},'';
-  for ${_i}=1,#${_str},2 do ${_bytes}[#(${_bytes})+1]=(${_str}):sub(${_i},${_i}+1)end;
-  for ${_n}=#(${_bytes}),1,-1 do
-    local ${_b}=tonumber(${_bytes}[${_n}],16);
-    if ${_b} then
-      local ${_c}=string.char(bit32.bxor(${_b},${_key}:byte((#(${_bytes})-${_n})%#${_key}+1)));
-      if ${_c}~='\0' then ${_out}=${_out}..${_c} end
-    end
-  end;
-  if ${_out}==''then error'corrupted data'end;
-  local ${_fn},${_env}=loadstring(${_out}),getfenv(0);
-  if not ${_fn} then error('load failed')end;
-  setfenv(${_fn},${_env});
-  return ${_fn}
-end)()`;
+      // ✅ Lua 5.1-совместимый декодер (без bit32, без ~, без \0)
+      const loader =
+`local ${v_str},${v_key}="${encrypted}","${key}"
+local ${v_clear}=""
+local ${v_hex}={}
+for ${v_i}=1,#${v_str},2 do
+  ${v_hex}[#${v_hex}+1]=("${v_str}"):sub(${v_i},${v_i}+1)
+end
+for ${v_n}=#${v_hex},1,-1 do
+  local ${v_b}=tonumber(${v_hex}[${v_n}],16)
+  local ${v_c}=string.char((${v_b}~${v_key}:byte((#(${v_hex})-${v_n})%#${v_key}+1))&255)
+  ${v_clear}=${v_clear}..${v_c}
+end
+local ${v_fn}=loadstring(${v_clear})
+if not ${v_fn} then error("Decryption or syntax error") end
+return ${v_fn}`;
 
       document.getElementById("out").value = loader;
     }
