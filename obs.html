@@ -1,232 +1,94 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roblox Онлайн-Монитор</title>
+  <title>Roblox Онлайн</title>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      padding: 20px;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .add-section {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .servers {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-    .server {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 16px;
-      text-align: center;
-      transition: transform 0.2s;
-    }
-    .server:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .server-id {
-      font-size: 12px;
-      color: #777;
-      margin-top: 4px;
-    }
-    .server-name {
-      font-weight: bold;
-      font-size: 16px;
-      margin: 8px 0;
-      color: #333;
-      word-break: break-word;
-    }
-    .server-online {
-      font-size: 28px;
-      font-weight: bold;
-      color: #2e8b57;
-      margin: 10px 0;
-    }
-    .server-error {
-      color: #d32f2f;
-      font-size: 14px;
-      margin-top: 8px;
-    }
-    input {
-      padding: 8px 12px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      width: 200px;
-    }
-    button {
-      padding: 8px 16px;
-      font-size: 14px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-left: 8px;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .remove-btn {
-      background: #dc3545;
-      margin-left: 6px;
-      padding: 4px 8px;
-      font-size: 12px;
-    }
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    .input { margin: 10px 0; }
+    .server { background: white; padding: 16px; margin: 10px 0; border-radius: 6px; box-shadow: 0 1px 4px #ccc; }
+    .online { font-size: 24px; color: #2e7d32; font-weight: bold; }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🎮 Roblox Онлайн-Монитор</h1>
-  <p>Добавьте Place ID игр — онлайн обновляется каждую секунду</p>
+<h2>🎮 Онлайн по Place ID</h2>
+<div class="input">
+  <input type="text" id="placeId" placeholder="Введите Place ID (напр. 286090429)" />
+  <button onclick="checkOnline()">Показать онлайн</button>
 </div>
 
-<div class="add-section">
-  <input type="text" id="newPlaceId" placeholder="Введите Place ID (например: 123456789)" />
-  <button onclick="addServer()">➕ Добавить</button>
-</div>
-
-<div id="servers" class="servers">
-  <!-- Сервера будут добавлены сюда -->
-</div>
+<div id="result"></div>
 
 <script>
-  const THUMBNAILS_BASE = 'https://thumbnails.roblox.com/v1';
-  const UPDATE_INTERVAL = 5000; // 5 сек — безопасно и стабильно
-  let servers = JSON.parse(localStorage.getItem('robloxServers')) || [];
+async function checkOnline() {
+  const placeId = document.getElementById('placeId').value.trim();
+  if (!placeId || isNaN(placeId)) {
+    alert('Введите число!');
+    return;
+  }
 
-  function addServer() {
-    const input = document.getElementById('newPlaceId');
-    const placeId = input.value.trim();
-    if (!placeId || isNaN(placeId)) {
-      alert('⚠️ Введите корректный числовой Place ID');
-      return;
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = '<p>Загрузка...</p>';
+
+  try {
+    // ✅ Запрашиваем HTML-страницу игры
+    const url = `https://www.roblox.com/games/${placeId}/_`;
+    const response = await fetch(url);
+    const html = await response.text();
+
+    // 🔍 Ищем скрипт с данными игры
+    const match = html.match(/Roblox\.GameLaunch\.resize\(\s*{[\s\S]*?universeId:\s*(\d+)[\s\S]*?name:\s*["']([^"']+)["'][\s\S]*?playing:\s*(\d+)/i);
+
+    if (!match) {
+      // Альтернативный парсинг — через JSON в <script type="application/json">
+      const jsonMatch = html.match(/<script type="application\/json" id="game-details">([\s\S]*?)<\/script>/i);
+      if (jsonMatch) {
+        try {
+          const data = JSON.parse(jsonMatch[1]);
+          const { name, universeId } = data;
+          const playingMatch = html.match(/"playingCount":(\d+)/);
+          const playing = playingMatch ? parseInt(playingMatch[1]) : 0;
+          showResult(placeId, name, playing);
+          return;
+        } catch (e) {
+          throw new Error('Не удалось извлечь данные из JSON');
+        }
+      }
+      throw new Error('Данные об онлайне не найдены на странице');
     }
-    if (servers.some(s => s.id === placeId)) {
-      alert('⚠️ Эта игра уже добавлена');
-      return;
-    }
-    servers.push({ id: placeId, name: 'Загрузка...', online: 0, error: null });
-    saveServers();
-    renderServers();
-    input.value = '';
-    updateServer(placeId);
+
+    const universeId = match[1];
+    const name = match[2].replace(/\\'/g, "'");
+    const playing = parseInt(match[3]);
+
+    showResult(placeId, name, playing);
+  } catch (err) {
+    console.error(err);
+    resultDiv.innerHTML = `<p style="color:red">❌ Ошибка: ${err.message}</p>`;
   }
+}
 
-  function removeServer(placeId) {
-    servers = servers.filter(s => s.id !== placeId);
-    saveServers();
-    renderServers();
-  }
+function showResult(placeId, name, playing) {
+  const resultDiv = document.getElementById('result');
+  resultDiv.innerHTML = `
+    <div class="server">
+      <h3>${escapeHtml(name)}</h3>
+      <p><strong>Place ID:</strong> ${placeId}</p>
+      <p class="online">🎮 Онлайн: ${playing}</p>
+    </div>
+  `;
+}
 
-  function saveServers() {
-    localStorage.setItem('robloxServers', JSON.stringify(servers));
-  }
-
-  function renderServers() {
-    const container = document.getElementById('servers');
-    container.innerHTML = '';
-    if (servers.length === 0) {
-      container.innerHTML = '<p style="text-align:center;color:#777">Нет добавленных игр.</p>';
-      return;
-    }
-    servers.forEach(s => {
-      const div = document.createElement('div');
-      div.className = 'server';
-      const onlineDisplay = s.online !== null ? s.online.toLocaleString() : '—';
-      div.innerHTML = `
-        <div><strong>ID:</strong> ${s.id} 
-          <button class="remove-btn" onclick="removeServer('${s.id}')">×</button>
-        </div>
-        <div class="server-name">${escapeHtml(s.name) || '—'}</div>
-        <div class="server-online">${onlineDisplay}</div>
-        ${s.error ? `<div class="server-error">${escapeHtml(s.error)}</div>` : ''}
-        <div class="server-id">Place ID: ${s.id}</div>
-      `;
-      container.appendChild(div);
-    });
-  }
-
-  function escapeHtml(str) {
-    if (typeof str !== 'string') return str;
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  // ✅ Основная логика — через thumbnails.roblox.com (никаких 403!)
-  async function updateServer(placeId) {
-    const server = servers.find(s => s.id === placeId);
-    if (!server) return;
-
-    server.name = 'Обновление...';
-    server.error = null;
-    renderServers();
-
-    try {
-      // 🟢 Шаг 1: Получить universeId и название по placeId
-      const url1 = `${THUMBNAILS_BASE}/games/multiget-place-thumbnails?placeIds=${placeId}&size=150x150&format=Png&isCircular=false`;
-      const res1 = await fetch(url1);
-      if (!res1.ok) throw new Error(`HTTP ${res1.status}`);
-
-      const data1 = await res1.json();
-      if (!data1.data?.[0]) throw new Error('Игра не найдена');
-      
-      const item = data1.data[0];
-      if (item.state === 'Error') throw new Error(item.errorMessage || 'Ошибка загрузки');
-
-      const universeId = item.universeId;
-      const name = item.title || 'Без названия';
-
-      // 🟢 Шаг 2: Получить онлайн по universeId
-      const url2 = `${THUMBNAILS_BASE}/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`;
-      const res2 = await fetch(url2);
-      if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
-
-      const data2 = await res2.json();
-      const playing = data2.data?.[0]?.playing || 0;
-
-      // ✅ Успех
-      Object.assign(server, { name, online: playing, error: null });
-    } catch (err) {
-      console.error(`Ошибка для ${placeId}:`, err);
-      server.name = 'Ошибка';
-      server.online = null;
-      server.error = `❌ ${err.message}`;
-    } finally {
-      saveServers();
-      renderServers();
-    }
-  }
-
-  // ▶️ Автообновление
-  function startAutoUpdate() {
-    servers.forEach(s => updateServer(s.id));
-    setInterval(() => {
-      servers.forEach(s => updateServer(s.id));
-    }, UPDATE_INTERVAL);
-  }
-
-  renderServers();
-  startAutoUpdate();
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '<',
+    '>': '>',
+    '"': '&quot;',
+    "'": '&#039;'
+  })[m]);
+}
 </script>
 
 </body>
