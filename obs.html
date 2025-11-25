@@ -106,10 +106,8 @@
 </div>
 
 <script>
-  // ✅ Используем roproxy — проверено: работает в ноябре 2025
-  const API_BASE = 'https://games.roproxy.com/v1';
-  const UPDATE_INTERVAL = 4000; // 4 сек — безопасно
-
+  const THUMBNAILS_BASE = 'https://thumbnails.roblox.com/v1';
+  const UPDATE_INTERVAL = 5000; // 5 сек — безопасно и стабильно
   let servers = JSON.parse(localStorage.getItem('robloxServers')) || [];
 
   function addServer() {
@@ -127,7 +125,7 @@
     saveServers();
     renderServers();
     input.value = '';
-    fetchServerData(placeId);
+    updateServer(placeId);
   }
 
   function removeServer(placeId) {
@@ -174,8 +172,8 @@
       .replace(/'/g, '&#039;');
   }
 
-  // ✅ Основной запрос — через roproxy.com (без 403!)
-  async function fetchServerData(placeId) {
+  // ✅ Основная логика — через thumbnails.roblox.com (никаких 403!)
+  async function updateServer(placeId) {
     const server = servers.find(s => s.id === placeId);
     if (!server) return;
 
@@ -184,21 +182,22 @@
     renderServers();
 
     try {
-      // 🔹 Шаг 1: Получить universeId + имя по placeId
-      const url1 = `${API_BASE}/games/multiget?placeIds=${placeId}`;
+      // 🟢 Шаг 1: Получить universeId и название по placeId
+      const url1 = `${THUMBNAILS_BASE}/games/multiget-place-thumbnails?placeIds=${placeId}&size=150x150&format=Png&isCircular=false`;
       const res1 = await fetch(url1);
-      if (!res1.ok) throw new Error(`HTTP ${res1.status} — ${res1.statusText}`);
+      if (!res1.ok) throw new Error(`HTTP ${res1.status}`);
 
       const data1 = await res1.json();
-      if (!Array.isArray(data1) || data1.length === 0 || !data1[0]?.universeId) {
-        throw new Error('Игра не найдена или приватная');
-      }
+      if (!data1.data?.[0]) throw new Error('Игра не найдена');
+      
+      const item = data1.data[0];
+      if (item.state === 'Error') throw new Error(item.errorMessage || 'Ошибка загрузки');
 
-      const universeId = data1[0].universeId;
-      const name = data1[0].name || 'Без названия';
+      const universeId = item.universeId;
+      const name = item.title || 'Без названия';
 
-      // 🔹 Шаг 2: Получить онлайн по universeId
-      const url2 = `${API_BASE}/games?universeIds=${universeId}`;
+      // 🟢 Шаг 2: Получить онлайн по universeId
+      const url2 = `${THUMBNAILS_BASE}/games/icons?universeIds=${universeId}&size=150x150&format=Png&isCircular=false`;
       const res2 = await fetch(url2);
       if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
 
@@ -220,9 +219,9 @@
 
   // ▶️ Автообновление
   function startAutoUpdate() {
-    servers.forEach(s => fetchServerData(s.id));
+    servers.forEach(s => updateServer(s.id));
     setInterval(() => {
-      servers.forEach(s => fetchServerData(s.id));
+      servers.forEach(s => updateServer(s.id));
     }, UPDATE_INTERVAL);
   }
 
