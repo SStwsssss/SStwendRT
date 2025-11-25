@@ -106,16 +106,11 @@
 </div>
 
 <script>
-  // 🔁 Интервал обновления онлайн (в мс)
-  const UPDATE_INTERVAL = 1000; // 1 секунда
-
-  // 📦 Храним сервера в массиве объектов
+  const UPDATE_INTERVAL = 3000; // 3 сек — безопасный интервал
+  const RETRY_DELAY = 2000; // задержка перед повтором после ошибки
   let servers = JSON.parse(localStorage.getItem('robloxServers')) || [];
-  
-  // 🖼️ Загрузить текущие сервера при открытии
-  renderServers();
+  let isUpdating = false;
 
-  // ➕ Добавить сервер по ID
   function addServer() {
     const input = document.getElementById('newPlaceId');
     const placeId = input.value.trim();
@@ -123,51 +118,44 @@
       alert('⚠️ Введите корректный числовой Place ID');
       return;
     }
-
-    // Не дублировать
     if (servers.some(s => s.id === placeId)) {
       alert('⚠️ Эта игра уже добавлена');
       return;
     }
-
     servers.push({ id: placeId, name: 'Загрузка...', online: 0, error: null });
     saveServers();
     renderServers();
     input.value = '';
-    fetchServerData(placeId); // сразу загрузить данные
+    queueUpdate(placeId); // сразу запрашиваем
   }
 
-  // 🗑️ Удалить сервер
   function removeServer(placeId) {
     servers = servers.filter(s => s.id !== placeId);
     saveServers();
     renderServers();
   }
 
-  // 💾 Сохранить в localStorage
   function saveServers() {
     localStorage.setItem('robloxServers', JSON.stringify(servers));
   }
 
-  // 🎨 Отрисовать все сервера
   function renderServers() {
     const container = document.getElementById('servers');
     container.innerHTML = '';
-
     if (servers.length === 0) {
       container.innerHTML = '<p style="text-align:center;color:#777">Нет добавленных игр. Введите Place ID выше.</p>';
       return;
     }
-
     servers.forEach(s => {
       const div = document.createElement('div');
       div.className = 'server';
+      const onlineDisplay = s.online !== null ? s.online.toLocaleString() : '—';
       div.innerHTML = `
         <div><strong>ID:</strong> ${s.id} 
           <button class="remove-btn" onclick="removeServer('${s.id}')">×</button>
         </div>
         <div class="server-name">${s.name || '—'}</div>
-        <div class="server-online">${s.online !== null ? s.online : '—'}</div>
+        <div class="server-online">${onlineDisplay}</div>
         ${s.error ? `<div class="server-error">${s.error}</div>` : ''}
         <div class="server-id">Place ID: ${s.id}</div>
       `;
@@ -175,63 +163,99 @@
     });
   }
 
-  // 📡 Получить данные игры (название + онлайн) по Place ID
-  async function fetchServerData(placeId) {
+  // 🔁 Очередь обновления — не параллельно, а по одному
+  const updateQueue = [];
+  function queueUpdate(placeId) {
+    if (!updateQueue.includes(placeId)) {
+      updateQueue.push(placeId);
+      processQueue();
+    }
+  }
+
+  async function processQueue() {
+    if (isUpdating || updateQueue.length === 0) return;
+    isUpdating = true;
+    const placeId = updateQueue.shift();
     try {
-      // Шаг 1: Получить Universe ID по Place ID
-      const placeRes = await fetch(`https://games.roblox.com/v1/games/multiget?placeIds=${placeId}`);
-      if (!placeRes.ok) throw new Error(`HTTP ${placeRes.status}`);
-      
+      await fetchServerData(placeId);
+    } catch (err) {
+      console.warn(`Отложенный повтор для ${placeId} через ${RETRY_DELAY}мс`);
+      setTimeout(() => {
+        updateQueue.push(placeId);
+        processQueue();
+      }, RETRY_DELAY);
+    } finally {
+      isUpdating = false;
+      if (updateQueue.length > 0) setTimeout(processQueue, 100);
+    }
+  }
+
+  async function fetchServerData(placeId) {
+    const server = servers.find(s => s.id === placeId);
+    if (!server) return;
+
+    server.name = 'Обновление...';
+    server.error = null;
+    renderServers(); // покажем "Обновление..."
+
+    try {
+      // 🌐 Шаг 1: Получить Universe ID
+      const placeRes = await fetch(`https://games.roblox.com/v1/games/multiget?placeIds=${placeId}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (!placeRes.ok) {
+        throw new Error(`HTTP ${placeRes.status} — ${placeRes.statusText}`);
+      }
+
       const placeData = await placeRes.json();
-      if (!placeData || placeData.length === 0 || !placeData[0].universeId) {
-        throw new Error('Игра не найдена');
+      if (!Array.isArray(placeData) || placeData.length === 0 || !placeData[0]?.universeId) {
+        throw new Error('Игра не найдена или неактивна');
       }
 
       const universeId = placeData[0].universeId;
       const name = placeData[0].name || 'Без названия';
 
-      // Шаг 2: Получить онлайн по Universe ID
-      const uniRes = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
-      if (!uniRes.ok) throw new Error(`HTTP ${uniRes.status}`);
+      // 🌐 Шаг 2: Получить онлайн
+      const uniRes = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+
+      if (!uniRes.ok) {
+        throw new Error(`HTTP ${uniRes.status}`);
+      }
 
       const uniData = await uniRes.json();
-      let playing = 0;
-      if (uniData.data && uniData.data[0]) {
-        playing = uniData.data[0].playing || 0;
-      }
+      const playing = uniData.data?.[0]?.playing || 0;
 
-      // Обновить данные в массиве
-      const server = servers.find(s => s.id === placeId);
-      if (server) {
-        server.name = name;
-        server.online = playing;
-        server.error = null;
-      }
+      // ✅ Успех
+      Object.assign(server, { name, online: playing, error: null });
     } catch (err) {
-      const server = servers.find(s => s.id === placeId);
-      if (server) {
-        server.error = `❌ ${err.message}`;
-        server.name = 'Ошибка';
-        server.online = null;
-      }
+      console.error(`Ошибка для ${placeId}:`, err);
+      server.name = 'Ошибка';
+      server.online = null;
+      server.error = `❌ ${err.message}`;
     } finally {
       saveServers();
       renderServers();
     }
   }
 
-  // 🔄 Обновлять онлайн всех серверов каждую секунду
+  // ▶️ Запуск автообновления
   function startAutoUpdate() {
-    // Обновить все сервера сразу при старте
-    servers.forEach(s => fetchServerData(s.id));
-
-    // Затем — каждую секунду
+    // Первое обновление всех серверов
+    servers.forEach(s => queueUpdate(s.id));
+    
+    // Периодическое обновление
     setInterval(() => {
-      servers.forEach(s => fetchServerData(s.id));
+      servers.forEach(s => queueUpdate(s.id));
     }, UPDATE_INTERVAL);
   }
 
-  // ▶️ Запуск автообновления
+  renderServers();
   startAutoUpdate();
 </script>
 
