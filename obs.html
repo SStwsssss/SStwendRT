@@ -106,10 +106,9 @@
 </div>
 
 <script>
-  const UPDATE_INTERVAL = 3000; // 3 сек — безопасный интервал
-  const RETRY_DELAY = 2000; // задержка перед повтором после ошибки
+  const UPDATE_INTERVAL = 3000; // 3 сек — разумный интервал
+  const CORS_PROXY = 'https://corsproxy.io/?';
   let servers = JSON.parse(localStorage.getItem('robloxServers')) || [];
-  let isUpdating = false;
 
   function addServer() {
     const input = document.getElementById('newPlaceId');
@@ -126,7 +125,7 @@
     saveServers();
     renderServers();
     input.value = '';
-    queueUpdate(placeId); // сразу запрашиваем
+    updateServer(placeId);
   }
 
   function removeServer(placeId) {
@@ -143,7 +142,7 @@
     const container = document.getElementById('servers');
     container.innerHTML = '';
     if (servers.length === 0) {
-      container.innerHTML = '<p style="text-align:center;color:#777">Нет добавленных игр. Введите Place ID выше.</p>';
+      container.innerHTML = '<p style="text-align:center;color:#777">Нет добавленных игр.</p>';
       return;
     }
     servers.forEach(s => {
@@ -154,82 +153,56 @@
         <div><strong>ID:</strong> ${s.id} 
           <button class="remove-btn" onclick="removeServer('${s.id}')">×</button>
         </div>
-        <div class="server-name">${s.name || '—'}</div>
+        <div class="server-name">${escapeHtml(s.name) || '—'}</div>
         <div class="server-online">${onlineDisplay}</div>
-        ${s.error ? `<div class="server-error">${s.error}</div>` : ''}
+        ${s.error ? `<div class="server-error">${escapeHtml(s.error)}</div>` : ''}
         <div class="server-id">Place ID: ${s.id}</div>
       `;
       container.appendChild(div);
     });
   }
 
-  // 🔁 Очередь обновления — не параллельно, а по одному
-  const updateQueue = [];
-  function queueUpdate(placeId) {
-    if (!updateQueue.includes(placeId)) {
-      updateQueue.push(placeId);
-      processQueue();
-    }
+  // Защита от XSS (опционально, но полезно)
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '<')
+      .replace(/>/g, '>')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
-  async function processQueue() {
-    if (isUpdating || updateQueue.length === 0) return;
-    isUpdating = true;
-    const placeId = updateQueue.shift();
-    try {
-      await fetchServerData(placeId);
-    } catch (err) {
-      console.warn(`Отложенный повтор для ${placeId} через ${RETRY_DELAY}мс`);
-      setTimeout(() => {
-        updateQueue.push(placeId);
-        processQueue();
-      }, RETRY_DELAY);
-    } finally {
-      isUpdating = false;
-      if (updateQueue.length > 0) setTimeout(processQueue, 100);
-    }
-  }
-
-  async function fetchServerData(placeId) {
+  // ✅ Основной запрос — через corsproxy.io
+  async function updateServer(placeId) {
     const server = servers.find(s => s.id === placeId);
     if (!server) return;
 
     server.name = 'Обновление...';
     server.error = null;
-    renderServers(); // покажем "Обновление..."
+    renderServers();
 
     try {
-      // 🌐 Шаг 1: Получить Universe ID
-      const placeRes = await fetch(`https://games.roblox.com/v1/games/multiget?placeIds=${placeId}`, {
-        method: 'GET',
-        mode: 'cors',
-        headers: { 'Accept': 'application/json' }
-      });
-
-      if (!placeRes.ok) {
-        throw new Error(`HTTP ${placeRes.status} — ${placeRes.statusText}`);
+      // 🔗 Шаг 1: Получить universeId по placeId
+      const url1 = `${CORS_PROXY}https://games.roblox.com/v1/games/multiget?placeIds=${placeId}`;
+      const res1 = await fetch(url1);
+      if (!res1.ok) throw new Error(`HTTP ${res1.status}`);
+      
+      const data1 = await res1.json();
+      if (!Array.isArray(data1) || !data1[0] || !data1[0].universeId) {
+        throw new Error('Игра не найдена или недоступна');
       }
 
-      const placeData = await placeRes.json();
-      if (!Array.isArray(placeData) || placeData.length === 0 || !placeData[0]?.universeId) {
-        throw new Error('Игра не найдена или неактивна');
-      }
+      const universeId = data1[0].universeId;
+      const name = data1[0].name || 'Без названия';
 
-      const universeId = placeData[0].universeId;
-      const name = placeData[0].name || 'Без названия';
+      // 🔗 Шаг 2: Получить онлайн
+      const url2 = `${CORS_PROXY}https://games.roblox.com/v1/games?universeIds=${universeId}`;
+      const res2 = await fetch(url2);
+      if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
 
-      // 🌐 Шаг 2: Получить онлайн
-      const uniRes = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`, {
-        method: 'GET',
-        mode: 'cors'
-      });
-
-      if (!uniRes.ok) {
-        throw new Error(`HTTP ${uniRes.status}`);
-      }
-
-      const uniData = await uniRes.json();
-      const playing = uniData.data?.[0]?.playing || 0;
+      const data2 = await res2.json();
+      const playing = data2.data?.[0]?.playing || 0;
 
       // ✅ Успех
       Object.assign(server, { name, online: playing, error: null });
@@ -244,17 +217,15 @@
     }
   }
 
-  // ▶️ Запуск автообновления
+  // ▶️ Автообновление всех серверов
   function startAutoUpdate() {
-    // Первое обновление всех серверов
-    servers.forEach(s => queueUpdate(s.id));
-    
-    // Периодическое обновление
+    servers.forEach(s => updateServer(s.id));
     setInterval(() => {
-      servers.forEach(s => queueUpdate(s.id));
+      servers.forEach(s => updateServer(s.id));
     }, UPDATE_INTERVAL);
   }
 
+  // Инициализация
   renderServers();
   startAutoUpdate();
 </script>
