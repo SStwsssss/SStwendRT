@@ -106,8 +106,10 @@
 </div>
 
 <script>
-  const UPDATE_INTERVAL = 3000; // 3 сек — разумный интервал
-  const CORS_PROXY = 'https://corsproxy.io/?';
+  // ✅ Используем roproxy — проверено: работает в ноябре 2025
+  const API_BASE = 'https://games.roproxy.com/v1';
+  const UPDATE_INTERVAL = 4000; // 4 сек — безопасно
+
   let servers = JSON.parse(localStorage.getItem('robloxServers')) || [];
 
   function addServer() {
@@ -125,7 +127,7 @@
     saveServers();
     renderServers();
     input.value = '';
-    updateServer(placeId);
+    fetchServerData(placeId);
   }
 
   function removeServer(placeId) {
@@ -162,7 +164,6 @@
     });
   }
 
-  // Защита от XSS (опционально, но полезно)
   function escapeHtml(str) {
     if (typeof str !== 'string') return str;
     return str
@@ -173,8 +174,8 @@
       .replace(/'/g, '&#039;');
   }
 
-  // ✅ Основной запрос — через corsproxy.io
-  async function updateServer(placeId) {
+  // ✅ Основной запрос — через roproxy.com (без 403!)
+  async function fetchServerData(placeId) {
     const server = servers.find(s => s.id === placeId);
     if (!server) return;
 
@@ -183,21 +184,21 @@
     renderServers();
 
     try {
-      // 🔗 Шаг 1: Получить universeId по placeId
-      const url1 = `${CORS_PROXY}https://games.roblox.com/v1/games/multiget?placeIds=${placeId}`;
+      // 🔹 Шаг 1: Получить universeId + имя по placeId
+      const url1 = `${API_BASE}/games/multiget?placeIds=${placeId}`;
       const res1 = await fetch(url1);
-      if (!res1.ok) throw new Error(`HTTP ${res1.status}`);
-      
+      if (!res1.ok) throw new Error(`HTTP ${res1.status} — ${res1.statusText}`);
+
       const data1 = await res1.json();
-      if (!Array.isArray(data1) || !data1[0] || !data1[0].universeId) {
-        throw new Error('Игра не найдена или недоступна');
+      if (!Array.isArray(data1) || data1.length === 0 || !data1[0]?.universeId) {
+        throw new Error('Игра не найдена или приватная');
       }
 
       const universeId = data1[0].universeId;
       const name = data1[0].name || 'Без названия';
 
-      // 🔗 Шаг 2: Получить онлайн
-      const url2 = `${CORS_PROXY}https://games.roblox.com/v1/games?universeIds=${universeId}`;
+      // 🔹 Шаг 2: Получить онлайн по universeId
+      const url2 = `${API_BASE}/games?universeIds=${universeId}`;
       const res2 = await fetch(url2);
       if (!res2.ok) throw new Error(`HTTP ${res2.status}`);
 
@@ -217,15 +218,14 @@
     }
   }
 
-  // ▶️ Автообновление всех серверов
+  // ▶️ Автообновление
   function startAutoUpdate() {
-    servers.forEach(s => updateServer(s.id));
+    servers.forEach(s => fetchServerData(s.id));
     setInterval(() => {
-      servers.forEach(s => updateServer(s.id));
+      servers.forEach(s => fetchServerData(s.id));
     }, UPDATE_INTERVAL);
   }
 
-  // Инициализация
   renderServers();
   startAutoUpdate();
 </script>
