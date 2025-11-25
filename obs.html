@@ -1,101 +1,239 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>Lua Obfuscator — loadstring() Safe (Roblox Legacy)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Онлайн-Монитор</title>
   <style>
-    body { font-family: monospace; padding: 20px; background: #0d0d0d; color: #ccc; }
-    textarea { width: 100%; background: #1a1a1a; color: #eee; border: 1px solid #444; resize: vertical; font-family: monospace; }
-    button { margin: 8px 0; padding: 6px 12px; background: #2a2a2a; color: #fff; border: 1px solid #555; cursor: pointer; }
-    button:hover { background: #3a3a3a; }
-    h3 { color: #aaa; margin-top: 16px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .add-section {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .servers {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .server {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 16px;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .server:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .server-id {
+      font-size: 12px;
+      color: #777;
+      margin-top: 4px;
+    }
+    .server-name {
+      font-weight: bold;
+      font-size: 16px;
+      margin: 8px 0;
+      color: #333;
+      word-break: break-word;
+    }
+    .server-online {
+      font-size: 28px;
+      font-weight: bold;
+      color: #2e8b57;
+      margin: 10px 0;
+    }
+    .server-error {
+      color: #d32f2f;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+    input {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 200px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .remove-btn {
+      background: #dc3545;
+      margin-left: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <h3>Lua Code:</h3>
-  <textarea id="code" rows="6" placeholder="print('Hello!')">local x = 42; print('Result:', x * 2)</textarea><br>
-  <button onclick="make()">Obfuscate → loadstring()</button>
 
-  <h3>Output (paste into loadstring(...))</h3>
-  <textarea id="out" rows="22" readonly></textarea><br>
-  <button onclick="copy()">Copy</button>
+<div class="header">
+  <h1>🎮 Roblox Онлайн-Монитор</h1>
+  <p>Добавьте Place ID игр — онлайн обновляется каждую секунду</p>
+</div>
 
-  <script>
-    function randVar() {
-      const chars = "abcdefghijklmnopqrstuvwxyz";
-      const len = 3 + Math.floor(Math.random() * 5);
-      return Array.from({length: len}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+<div class="add-section">
+  <input type="text" id="newPlaceId" placeholder="Введите Place ID (например: 123456789)" />
+  <button onclick="addServer()">➕ Добавить</button>
+</div>
+
+<div id="servers" class="servers">
+  <!-- Сервера будут добавлены сюда -->
+</div>
+
+<script>
+  // 🔁 Интервал обновления онлайн (в мс)
+  const UPDATE_INTERVAL = 1000; // 1 секунда
+
+  // 📦 Храним сервера в массиве объектов
+  let servers = JSON.parse(localStorage.getItem('robloxServers')) || [];
+  
+  // 🖼️ Загрузить текущие сервера при открытии
+  renderServers();
+
+  // ➕ Добавить сервер по ID
+  function addServer() {
+    const input = document.getElementById('newPlaceId');
+    const placeId = input.value.trim();
+    if (!placeId || isNaN(placeId)) {
+      alert('⚠️ Введите корректный числовой Place ID');
+      return;
     }
 
-    function obfuscateData(str, key) {
-      let hex = "";
-      for (let i = 0; i < str.length; i++) {
-        const c = str.charCodeAt(i);
-        const k = key.charCodeAt(i % key.length);
-        let x = c ^ k;
-        if (x === 0) x = 1; // avoid \0
-        hex += x.toString(16).padStart(2, '0');
+    // Не дублировать
+    if (servers.some(s => s.id === placeId)) {
+      alert('⚠️ Эта игра уже добавлена');
+      return;
+    }
+
+    servers.push({ id: placeId, name: 'Загрузка...', online: 0, error: null });
+    saveServers();
+    renderServers();
+    input.value = '';
+    fetchServerData(placeId); // сразу загрузить данные
+  }
+
+  // 🗑️ Удалить сервер
+  function removeServer(placeId) {
+    servers = servers.filter(s => s.id !== placeId);
+    saveServers();
+    renderServers();
+  }
+
+  // 💾 Сохранить в localStorage
+  function saveServers() {
+    localStorage.setItem('robloxServers', JSON.stringify(servers));
+  }
+
+  // 🎨 Отрисовать все сервера
+  function renderServers() {
+    const container = document.getElementById('servers');
+    container.innerHTML = '';
+
+    if (servers.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:#777">Нет добавленных игр. Введите Place ID выше.</p>';
+      return;
+    }
+
+    servers.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'server';
+      div.innerHTML = `
+        <div><strong>ID:</strong> ${s.id} 
+          <button class="remove-btn" onclick="removeServer('${s.id}')">×</button>
+        </div>
+        <div class="server-name">${s.name || '—'}</div>
+        <div class="server-online">${s.online !== null ? s.online : '—'}</div>
+        ${s.error ? `<div class="server-error">${s.error}</div>` : ''}
+        <div class="server-id">Place ID: ${s.id}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  // 📡 Получить данные игры (название + онлайн) по Place ID
+  async function fetchServerData(placeId) {
+    try {
+      // Шаг 1: Получить Universe ID по Place ID
+      const placeRes = await fetch(`https://games.roblox.com/v1/games/multiget?placeIds=${placeId}`);
+      if (!placeRes.ok) throw new Error(`HTTP ${placeRes.status}`);
+      
+      const placeData = await placeRes.json();
+      if (!placeData || placeData.length === 0 || !placeData[0].universeId) {
+        throw new Error('Игра не найдена');
       }
-      return hex.match(/.{1,2}/g).reverse().join('');
+
+      const universeId = placeData[0].universeId;
+      const name = placeData[0].name || 'Без названия';
+
+      // Шаг 2: Получить онлайн по Universe ID
+      const uniRes = await fetch(`https://games.roblox.com/v1/games?universeIds=${universeId}`);
+      if (!uniRes.ok) throw new Error(`HTTP ${uniRes.status}`);
+
+      const uniData = await uniRes.json();
+      let playing = 0;
+      if (uniData.data && uniData.data[0]) {
+        playing = uniData.data[0].playing || 0;
+      }
+
+      // Обновить данные в массиве
+      const server = servers.find(s => s.id === placeId);
+      if (server) {
+        server.name = name;
+        server.online = playing;
+        server.error = null;
+      }
+    } catch (err) {
+      const server = servers.find(s => s.id === placeId);
+      if (server) {
+        server.error = `❌ ${err.message}`;
+        server.name = 'Ошибка';
+        server.online = null;
+      }
+    } finally {
+      saveServers();
+      renderServers();
     }
+  }
 
-    function make() {
-      const code = document.getElementById("code").value.trim();
-      if (!code) return alert("Enter Lua code first!");
+  // 🔄 Обновлять онлайн всех серверов каждую секунду
+  function startAutoUpdate() {
+    // Обновить все сервера сразу при старте
+    servers.forEach(s => fetchServerData(s.id));
 
-      const key = "k" + Math.random().toString(36).slice(2, 6); // e.g. "k9x2"
+    // Затем — каждую секунду
+    setInterval(() => {
+      servers.forEach(s => fetchServerData(s.id));
+    }, UPDATE_INTERVAL);
+  }
 
-      const encrypted = obfuscateData(code, key);
+  // ▶️ Запуск автообновления
+  startAutoUpdate();
+</script>
 
-      const v_s = randVar();
-      const v_k = randVar();
-      const v_d = randVar();
-      const v_i = randVar();
-      const v_b = randVar();
-      const v_p = randVar();
-      const v_c = randVar();
-      const v_x = randVar();
-      const v_ch = randVar();
-
-      // ✅ Полностью совместимо с Roblox Legacy (Lua 5.1)
-      const loader =
-`(function()
-  local function bxor(a,b)
-    local r,p=0,1
-    while a>0 or b>0 do
-      if a%2~=b%2 then r=r+p end
-      a,b=math.floor(a/2),math.floor(b/2)
-      p=p*2
-    end
-    return r
-  end
-  local ${v_s},${v_k}="${encrypted}","${key}"
-  local ${v_d}=""
-  for ${v_i}=1,#${v_s},2 do
-    local ${v_b}=tonumber(${v_s}:sub(${v_i},${v_i}+1),16)
-    if ${v_b} then
-      local ${v_p}=(#${v_s}/2-${v_i}/2+1)%#${v_k}+1
-      local ${v_c}=${v_k}:byte(${v_p})
-      local ${v_x}=bxor(${v_b},${v_c})
-      local ${v_ch}=${v_x}%256
-      if ${v_ch}==0 then ${v_ch}=1 end
-      ${v_d}=${v_d}..string.char(${v_ch})
-    end
-  end
-  local f=loadstring(${v_d})
-  if not f then error("load failed") end
-  return f()
-end)()`;
-
-      document.getElementById("out").value = loader;
-    }
-
-    function copy() {
-      const ta = document.getElementById("out");
-      ta.select();
-      document.execCommand("copy");
-      alert("✅ Copied — works in ANY Roblox Lua!");
-    }
-  </script>
 </body>
 </html>
