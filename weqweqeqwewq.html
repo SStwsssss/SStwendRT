@@ -23,10 +23,24 @@
       margin: 0 auto;
     }
 
-    h1 {
-      text-align: center;
-      color: #2c3e50;
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 24px;
+    }
+
+    #counter {
+      background: #3498db;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    h1 {
+      color: #2c3e50;
       font-weight: 600;
     }
 
@@ -122,7 +136,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>Information:</h1></h1>
+    <div class="header">
+      <span id="counter">0</span>
+      <h1>Information:</h1>
+    </div>
     <div class="input-group">
       <input type="text" id="userInput" placeholder=". . .">
       <button id="addBtn">Add</button>
@@ -134,8 +151,13 @@
     const input = document.getElementById('userInput');
     const addBtn = document.getElementById('addBtn');
     const notesList = document.getElementById('notesList');
+    const counter = document.getElementById('counter');
     let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
-    renderNotes();
+
+    function updateCounter() {
+      counter.textContent = notes.length;
+    }
+
     function addNote() {
       const text = input.value.trim();
       if (text === '') return;
@@ -144,7 +166,9 @@
       input.value = '';
       input.focus();
       renderNotes();
+      updateCounter();
     }
+
     function renderNotes() {
       if (notes.length === 0) {
         notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
@@ -166,18 +190,24 @@
           notes.splice(index, 1);
           localStorage.setItem('savedNotes', JSON.stringify(notes));
           renderNotes();
+          updateCounter();
         });
       });
     }
+
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
+
     addBtn.addEventListener('click', addNote);
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') addNote();
     });
+
+    renderNotes();
+    updateCounter();
   </script>
 </body>
 </html>
