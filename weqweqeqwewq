@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Informatin Base</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    input {
+      font-size: 16px;
+      padding: 8px;
+      width: 300px;
+    }
+    #output {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+  <input type="text" id="userInput" placeholder="Input:">
+  <div id="output"></div>
+  <script>
+    const input = document.getElementById('userInput');
+    const output = document.getElementById('output');
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('userInputData') || '';
+      input.value = saved;
+      output.textContent = saved;
+    });
+    input.addEventListener('input', () => {
+      const value = input.value;
+      output.textContent = value || '—';
+      localStorage.setItem('userInputData', value);
+    });
+  </script>
+</body>
+</html>
