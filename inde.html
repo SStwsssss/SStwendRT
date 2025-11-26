@@ -156,4 +156,75 @@
         <button onclick="window.location.href='sosal.html'">Chat</button>
         <button onclick="window.location.href='code.html'">Whitelist</button>
         <button onclick="window.location.href='adolf.html'">Code Base</button>
-        <button onclick="window.location.href='
+        <button onclick="window.location.href='weqweqeqwewq.html'">Information DB</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Endcraft</div>
+      <div class="input-group">
+        <input type="text" id="name" placeholder="Player Name">
+        <button onclick="search('https://endcraft.ru/profile/', 'name')">Search</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">Social</div>
+      <div class="input-group">
+        <input type="text" id="tg" placeholder="Telegram @username (без @)">
+        <button onclick="search('https://t.me/', 'tg')">Search</button>
+      </div>
+    </section>
+
+    <div id="status" class="status">📡 Ожидание записи в базу…</div>
+  </div>
+
+  <!-- Firebase + IP tracker -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script>
+    function search(base, id) {
+      const el = document.getElementById(id);
+      const val = el.value.trim();
+      if (!val) {
+        el.focus();
+        return;
+      }
+      window.open(base + encodeURIComponent(val), '_blank');
+    }
+
+    // Init Firebase & log visitor
+    (function() {
+      try {
+        const app = firebase.initializeApp({
+          databaseURL: "https://my-chat-site-2d226-default-rtdb.firebaseio.com/"
+        });
+        const db = app.database();
+
+        fetch('https://api.ipify.org?format=json')
+          .then(res => res.ok ? res.json() : Promise.reject())
+          .then(data => {
+            const ip = data.ip;
+            db.ref('visitors').push({
+              ip: ip,
+              ts: Date.now(),
+              ua: navigator.userAgent,
+              url: window.location.href
+            }).then(() => {
+              document.getElementById('status').textContent = `✅ IP ${ip} зарегистрирован.`;
+            }).catch(err => {
+              document.getElementById('status').textContent = `⚠️ Запись не удалась.`;
+              console.warn('Firebase write failed:', err);
+            });
+          })
+          .catch(() => {
+            document.getElementById('status').textContent = `⚠️ IP не определён.`;
+          });
+      } catch (e) {
+        document.getElementById('status').textContent = `⚠️ Сервис недоступен.`;
+        console.error('Firebase init error:', e);
+      }
+    })();
+  </script>
+</body>
+</html>
