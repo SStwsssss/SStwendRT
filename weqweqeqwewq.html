@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Заметки</title>
+  <title>Information Data Base</title>
   <style>
     * {
       box-sizing: border-box;
@@ -122,46 +122,34 @@
 </head>
 <body>
   <div class="container">
-    <h1>📝 Мои заметки</h1>
-
+    <h1>Information:</h1></h1>
     <div class="input-group">
-      <input type="text" id="userInput" placeholder="Введите текст и нажмите Enter или ➕">
-      <button id="addBtn">➕ Добавить</button>
+      <input type="text" id="userInput" placeholder=". . .">
+      <button id="addBtn">Add</button>
     </div>
-
     <ul id="notesList" class="notes-list">
-      <!-- Сюда будут добавляться заметки -->
     </ul>
   </div>
-
   <script>
     const input = document.getElementById('userInput');
     const addBtn = document.getElementById('addBtn');
     const notesList = document.getElementById('notesList');
-
-    // Загружаем сохранённые заметки при старте
     let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
     renderNotes();
-
-    // Обработчик добавления
     function addNote() {
       const text = input.value.trim();
       if (text === '') return;
-
       notes.push(text);
       localStorage.setItem('savedNotes', JSON.stringify(notes));
       input.value = '';
       input.focus();
       renderNotes();
     }
-
-    // Рендер списка
     function renderNotes() {
       if (notes.length === 0) {
         notesList.innerHTML = '<li class="empty-state">Пока нет заметок. Напишите первую 👇</li>';
         return;
       }
-
       notesList.innerHTML = '';
       notes.forEach((note, index) => {
         const li = document.createElement('li');
@@ -172,8 +160,6 @@
         `;
         notesList.appendChild(li);
       });
-
-      // Навешиваем обработчики удаления
       document.querySelectorAll('.note-delete').forEach(btn => {
         btn.addEventListener('click', () => {
           const index = parseInt(btn.dataset.index);
@@ -183,15 +169,11 @@
         });
       });
     }
-
-    // Защита от XSS при выводе текста
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
-
-    // События
     addBtn.addEventListener('click', addNote);
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') addNote();
