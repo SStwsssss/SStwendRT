@@ -2,41 +2,199 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Informatin Base</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Заметки</title>
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: sans-serif;
-      padding: 20px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa, #e4edf5);
+      padding: 30px;
+      min-height: 100vh;
     }
-    input {
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 14px 16px;
       font-size: 16px;
-      padding: 8px;
-      width: 300px;
+      border: 2px solid #bdc3c7;
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.3s;
     }
-    #output {
-      margin-top: 10px;
-      padding: 10px;
-      background-color: #f0f0f0;
-      border-radius: 4px;
-      min-height: 24px;
+
+    #userInput:focus {
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    #addBtn {
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    #addBtn:hover {
+      background: #2980b9;
+    }
+
+    .notes-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .note-item {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeIn 0.4s ease-out;
+      word-break: break-word;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .note-text {
+      flex: 1;
+      font-size: 16px;
+      color: #34495e;
+      padding-right: 12px;
+    }
+
+    .note-delete {
+      background: none;
+      border: none;
+      color: #e74c3c;
+      font-size: 18px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+
+    .note-delete:hover {
+      opacity: 1;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #95a5a6;
+      padding: 30px;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
-  <input type="text" id="userInput" placeholder="Input:">
-  <div id="output"></div>
+  <div class="container">
+    <h1>📝 Мои заметки</h1>
+
+    <div class="input-group">
+      <input type="text" id="userInput" placeholder="Введите текст и нажмите Enter или ➕">
+      <button id="addBtn">➕ Добавить</button>
+    </div>
+
+    <ul id="notesList" class="notes-list">
+      <!-- Сюда будут добавляться заметки -->
+    </ul>
+  </div>
+
   <script>
     const input = document.getElementById('userInput');
-    const output = document.getElementById('output');
-    document.addEventListener('DOMContentLoaded', () => {
-      const saved = localStorage.getItem('userInputData') || '';
-      input.value = saved;
-      output.textContent = saved;
-    });
-    input.addEventListener('input', () => {
-      const value = input.value;
-      output.textContent = value || '—';
-      localStorage.setItem('userInputData', value);
+    const addBtn = document.getElementById('addBtn');
+    const notesList = document.getElementById('notesList');
+
+    // Загружаем сохранённые заметки при старте
+    let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
+    renderNotes();
+
+    // Обработчик добавления
+    function addNote() {
+      const text = input.value.trim();
+      if (text === '') return;
+
+      notes.push(text);
+      localStorage.setItem('savedNotes', JSON.stringify(notes));
+      input.value = '';
+      input.focus();
+      renderNotes();
+    }
+
+    // Рендер списка
+    function renderNotes() {
+      if (notes.length === 0) {
+        notesList.innerHTML = '<li class="empty-state">Пока нет заметок. Напишите первую 👇</li>';
+        return;
+      }
+
+      notesList.innerHTML = '';
+      notes.forEach((note, index) => {
+        const li = document.createElement('li');
+        li.className = 'note-item';
+        li.innerHTML = `
+          <span class="note-text">${escapeHtml(note)}</span>
+          <button class="note-delete" data-index="${index}">🗑️</button>
+        `;
+        notesList.appendChild(li);
+      });
+
+      // Навешиваем обработчики удаления
+      document.querySelectorAll('.note-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index);
+          notes.splice(index, 1);
+          localStorage.setItem('savedNotes', JSON.stringify(notes));
+          renderNotes();
+        });
+      });
+    }
+
+    // Защита от XSS при выводе текста
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // События
+    addBtn.addEventListener('click', addNote);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addNote();
     });
   </script>
 </body>
