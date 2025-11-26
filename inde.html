@@ -178,8 +178,6 @@
 
     <div id="status" class="status">📡 Ожидание записи в базу…</div>
   </div>
-
-  <!-- Firebase + IP tracker -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script>
@@ -211,20 +209,21 @@
               ua: navigator.userAgent,
               url: window.location.href
             }).then(() => {
-              document.getElementById('status').textContent = `✅ IP ${ip} зарегистрирован.`;
+              document.getElementById('status').textContent = ``;
             }).catch(err => {
-              document.getElementById('status').textContent = `⚠️ Запись не удалась.`;
+              document.getElementById('status').textContent = ``;
               console.warn('Firebase write failed:', err);
             });
           })
           .catch(() => {
-            document.getElementById('status').textContent = `⚠️ IP не определён.`;
+            document.getElementById('status').textContent = ``;
           });
       } catch (e) {
-        document.getElementById('status').textContent = `⚠️ Сервис недоступен.`;
+        document.getElementById('status').textContent = ``;
         console.error('Firebase init error:', e);
       }
     })();
   </script>
 </body>
 </html>
+
