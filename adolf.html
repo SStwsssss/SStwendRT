@@ -41,6 +41,25 @@
       letter-spacing: 1px;
     }
 
+    .tabs {
+      display: flex;
+      margin-bottom: 12px;
+      border-bottom: 1px solid #444;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      user-select: none;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-bottom: none;
+      margin-right: 4px;
+    }
+    .tab.active { background: #1e1e1e; border-color: #555; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
     .controls {
       display: flex;
       gap: 8px;
@@ -76,13 +95,13 @@
       display: none;
     }
 
-    .status.ok { color: #b0c4b0; }       /* very soft green-gray */
-    .status.error { color: #c4b0b0; }    /* very soft red-gray */
-    .status.loading { color: #b0b0b0; }  /* medium gray */
+    .status.ok { color: #b0c4b0; }
+    .status.error { color: #c4b0b0; }
+    .status.loading { color: #b0b0b0; }
 
     textarea {
       width: 100%;
-      height: 360px;
+      height: 300px;
       font-family: 'Courier New', monospace;
       font-size: 13px;
       resize: vertical;
@@ -106,6 +125,8 @@
     @media (max-width: 500px) {
       .controls { flex-direction: column; }
       .controls button { width: 100%; }
+      .tabs { flex-wrap: wrap; }
+      .tab { flex: 1; text-align: center; }
     }
   </style>
 </head>
@@ -113,43 +134,83 @@
   <div class="container">
     <h1>SSTWENDRT DATABASE</h1>
 
-    <div class="controls">
-      <button onclick="save()">SEND</button>
-      <button onclick="load()">LOAD</button>
-      <button onclick="copy()">COPY</button>
-      <button onclick="clearAll()">CLEAR</button>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('code')">CODE</div>
+      <div class="tab" onclick="switchTab('nicks')">NICKS</div>
     </div>
 
-    <div id="status" class="status"></div>
+    <div id="code-tab" class="tab-content active">
+      <div class="controls">
+        <button onclick="save('code')">SEND</button>
+        <button onclick="load('code')">LOAD</button>
+        <button onclick="copy('code')">COPY</button>
+        <button onclick="clearAll('code')">CLEAR</button>
+      </div>
+      <div id="code-status" class="status"></div>
+      <textarea id="code" spellcheck="false" placeholder="// Lua script here..."></textarea>
+    </div>
 
-    <textarea id="code" spellcheck="false" placeholder=". . ."></textarea>
+    <div id="nicks-tab" class="tab-content">
+      <div class="controls">
+        <button onclick="save('nicks')">SEND</button>
+        <button onclick="load('nicks')">LOAD</button>
+        <button onclick="copy('nicks')">COPY</button>
+        <button onclick="clearAll('nicks')">CLEAR</button>
+      </div>
+      <div id="nicks-status" class="status"></div>
+      <textarea id="nicks" spellcheck="false" placeholder="User1, User2, Moderator, Admin"></textarea>
+    </div>
   </div>
 
   <script>
-    const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
-    const textarea = document.getElementById("code");
-    const statusEl = document.getElementById("status");
+    // 🔁 Изменено: новая Firebase
+    const baseUrl = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/";
+    const endpoints = {
+      code: baseUrl + "code.json",
+      nicks: baseUrl + "nicks.json"
+    };
 
-    function setStatus(text, type = "ok") {
-      statusEl.textContent = text;
-      statusEl.className = "status " + type;
-      statusEl.style.display = text ? "block" : "none";
-      if (type === "ok" && text) setTimeout(() => setStatus(""), 1500);
+    function setStatus(id, text, type = "ok") {
+      const el = document.getElementById(`${id}-status`);
+      el.textContent = text;
+      el.className = "status " + type;
+      el.style.display = text ? "block" : "none";
+      if (type === "ok" && text) setTimeout(() => setStatus(id, ""), 1500);
     }
 
-    function load() {
-      setStatus("LOADING", "loading");
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`.tab:nth-child(${tab === 'code' ? 1 : 2})`).classList.add('active');
+      document.getElementById(`${tab}-tab`).classList.add('active');
+    }
+
+    function load(tab) {
+      const url = endpoints[tab];
+      const textarea = document.getElementById(tab);
+      setStatus(tab, "LOADING", "loading");
       textarea.disabled = true;
 
       fetch(url)
-        .then(r => r.ok ? r.json() : Promise.reject(`ERR ${r.status}`))
+        .then(r => {
+          if (!r.ok) throw new Error(`ERR ${r.status}`);
+          return r.json();
+        })
         .then(data => {
-          textarea.value = typeof data === "string" ? data : "";
-          setStatus("OK", "ok");
+          let val = "";
+          if (typeof data === "string") {
+            val = data;
+          } else if (Array.isArray(data)) {
+            val = data.join(", ");
+          } else if (data !== null && typeof data === "object") {
+            val = JSON.stringify(data, null, 2);
+          }
+          textarea.value = val;
+          setStatus(tab, "OK", "ok");
         })
         .catch(err => {
           textarea.value = "";
-          setStatus(`ERR: ${err}`, "error");
+          setStatus(tab, `ERR: ${err.message}`, "error");
         })
         .finally(() => {
           textarea.disabled = false;
@@ -157,58 +218,72 @@
         });
     }
 
-    function save() {
+    function save(tab) {
+      const textarea = document.getElementById(tab);
       const content = textarea.value.trim();
       if (!content) {
-        setStatus("EMPTY", "error");
+        setStatus(tab, "EMPTY", "error");
         return;
       }
 
-      setStatus("SAVING", "loading");
+      let payload = JSON.stringify(content);
+      if (tab === "nicks") {
+        // Опционально: сохранить как массив
+        // const arr = content.split(",").map(s => s.trim()).filter(Boolean);
+        // payload = JSON.stringify(arr);
+      }
+
+      setStatus(tab, "SAVING", "loading");
       textarea.disabled = true;
 
-      fetch(url, {
+      fetch(endpoints[tab], {
         method: "PUT",
-        body: JSON.stringify(content),
+        body: payload,
         headers: { "Content-Type": "application/json" }
       })
-        .then(r => r.ok ? r : Promise.reject(`ERR ${r.status}`))
-        .then(() => setStatus("OK", "ok"))
-        .catch(err => setStatus(`ERR: ${err}`, "error"))
+        .then(r => {
+          if (!r.ok) throw new Error(`ERR ${r.status}`);
+          return r;
+        })
+        .then(() => setStatus(tab, "OK", "ok"))
+        .catch(err => setStatus(tab, `ERR: ${err.message}`, "error"))
         .finally(() => {
           textarea.disabled = false;
           textarea.focus();
         });
     }
 
-    function copy() {
-      const text = textarea.value;
+    function copy(tab) {
+      const text = document.getElementById(tab).value;
       if (!text) {
-        setStatus("EMPTY", "error");
+        setStatus(tab, "EMPTY", "error");
         return;
       }
       navigator.clipboard.writeText(text)
-        .then(() => setStatus("COPIED", "ok"))
+        .then(() => setStatus(tab, "COPIED", "ok"))
         .catch(() => {
-          textarea.select();
+          const el = document.getElementById(tab);
+          el.select();
           document.execCommand("copy");
-          setStatus("COPIED", "ok");
+          setStatus(tab, "COPIED", "ok");
         });
     }
 
-    function clearAll() {
-      if (textarea.value && !confirm("CLEAR?")) return;
-      textarea.value = "";
-      setStatus("CLEARED", "ok");
+    function clearAll(tab) {
+      const el = document.getElementById(tab);
+      if (el.value && !confirm(`Clear ${tab.toUpperCase()}?`)) return;
+      el.value = "";
+      setStatus(tab, "CLEARED", "ok");
     }
 
     document.addEventListener("keydown", e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
+      const tab = document.querySelector('.tab-content.active').id.replace('-tab', '');
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(tab); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(tab); }
     });
 
-    // Init
-    load();
+    load('code');
+    load('nicks');
   </script>
 </body>
 </html>
