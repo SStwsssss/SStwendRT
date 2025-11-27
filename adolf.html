@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>SSTWENDRT • CODE</title>
+  <title>SStwendRT Checker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * {
@@ -85,7 +85,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>SSTWENDRT • CODE</h1>
+    <h1>Code:</h1>
     <div class="controls">
       <button onclick="save()">SEND</button>
       <button onclick="load()">LOAD</button>
@@ -97,7 +97,6 @@
   </div>
 
   <script>
-    // 🔁 Только ваша Firebase
     const URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/code.json";
 
     const textarea = document.getElementById("code");
@@ -171,7 +170,7 @@
       if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
     });
 
-    load(); // авто-загрузка при открытии
+    load();
   </script>
 </body>
 </html>
