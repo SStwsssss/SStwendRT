@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SSTWENDRT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #121212;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      background: #1e1e1e;
+      border: 1px solid #444444;
+      padding: 20px;
+    }
+
+    h1 {
+      font-weight: normal;
+      font-size: 18px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #444444;
+      padding-bottom: 6px;
+      letter-spacing: 1px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      justify-content: center;
+    }
+
+    .controls button {
+      padding: 8px 14px;
+      background: #2d2d2d;
+      color: #e0e0e0;
+      border: 1px solid #444444;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.15s;
+    }
+
+    .controls button:hover {
+      background: #3a3a3a;
+    }
+
+    .controls button:active {
+      background: #444444;
+    }
+
+    .status {
+      min-height: 1.2em;
+      margin: 6px 0;
+      font-size: 13px;
+      display: none;
+    }
+
+    .status.ok { color: #b0c4b0; }       /* very soft green-gray */
+    .status.error { color: #c4b0b0; }    /* very soft red-gray */
+    .status.loading { color: #b0b0b0; }  /* medium gray */
+
+    textarea {
+      width: 100%;
+      height: 360px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      resize: vertical;
+      border: 1px solid #444444;
+      padding: 10px;
+      background: #1a1a1a;
+      color: #e6e6e6;
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    textarea::placeholder {
+      color: #666666;
+    }
+
+    textarea:focus {
+      outline: 2px solid #555555;
+      outline-offset: -2px;
+    }
+
+    @media (max-width: 500px) {
+      .controls { flex-direction: column; }
+      .controls button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SSTWENDRT DATABASE</h1>
+
+    <div class="controls">
+      <button onclick="save()">SEND</button>
+      <button onclick="load()">LOAD</button>
+      <button onclick="copy()">COPY</button>
+      <button onclick="clearAll()">CLEAR</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <textarea id="code" spellcheck="false" placeholder=". . ."></textarea>
+  </div>
+
+  <script>
+    const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
+    const textarea = document.getElementById("code");
+    const statusEl = document.getElementById("status");
+
+    function setStatus(text, type = "ok") {
+      statusEl.textContent = text;
+      statusEl.className = "status " + type;
+      statusEl.style.display = text ? "block" : "none";
+      if (type === "ok" && text) setTimeout(() => setStatus(""), 1500);
+    }
+
+    function load() {
+      setStatus("LOADING", "loading");
+      textarea.disabled = true;
+
+      fetch(url)
+        .then(r => r.ok ? r.json() : Promise.reject(`ERR ${r.status}`))
+        .then(data => {
+          textarea.value = typeof data === "string" ? data : "";
+          setStatus("OK", "ok");
+        })
+        .catch(err => {
+          textarea.value = "";
+          setStatus(`ERR: ${err}`, "error");
+        })
+        .finally(() => {
+          textarea.disabled = false;
+          textarea.focus();
+        });
+    }
+
+    function save() {
+      const content = textarea.value.trim();
+      if (!content) {
+        setStatus("EMPTY", "error");
+        return;
+      }
+
+      setStatus("SAVING", "loading");
+      textarea.disabled = true;
+
+      fetch(url, {
+        method: "PUT",
+        body: JSON.stringify(content),
+        headers: { "Content-Type": "application/json" }
+      })
+        .then(r => r.ok ? r : Promise.reject(`ERR ${r.status}`))
+        .then(() => setStatus("OK", "ok"))
+        .catch(err => setStatus(`ERR: ${err}`, "error"))
+        .finally(() => {
+          textarea.disabled = false;
+          textarea.focus();
+        });
+    }
+
+    function copy() {
+      const text = textarea.value;
+      if (!text) {
+        setStatus("EMPTY", "error");
+        return;
+      }
+      navigator.clipboard.writeText(text)
+        .then(() => setStatus("COPIED", "ok"))
+        .catch(() => {
+          textarea.select();
+          document.execCommand("copy");
+          setStatus("COPIED", "ok");
+        });
+    }
+
+    function clearAll() {
+      if (textarea.value && !confirm("CLEAR?")) return;
+      textarea.value = "";
+      setStatus("CLEARED", "ok");
+    }
+
+    document.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
+    });
+
+    // Init
+    load();
+  </script>
+</body>
+</html>
