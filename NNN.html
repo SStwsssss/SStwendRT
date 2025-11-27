@@ -1,255 +1,236 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>SSTWENDRT DATABASE</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Information Data Base</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      background: #121212;
-      color: #e0e0e0;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
-      line-height: 1.4;
-      padding: 20px;
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background-color: #121212; /* Almost black */
+      color: #e0e0e0; /* Soft white for readability */
+      padding: 30px;
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
     }
+
     .container {
-      width: 100%;
-      max-width: 720px;
-      background: #1e1e1e;
-      border: 1px solid #444;
-      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
     }
-    h1 {
-      font-weight: normal;
-      font-size: 18px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid #444;
-      padding-bottom: 6px;
-      letter-spacing: 1px;
-    }
-    .tabs {
+
+    .header {
       display: flex;
-      margin-bottom: 12px;
-      border-bottom: 1px solid #444;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
     }
-    .tab {
-      padding: 8px 16px;
+
+    #counter {
+      background: #000;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      border: 1px solid #333;
+    }
+
+    h1 {
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    #userInput {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      outline: none;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      caret-color: #fff;
+    }
+
+    #userInput:focus {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+    }
+
+    #addBtn {
+      background: #000;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
       cursor: pointer;
-      user-select: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    #addBtn:hover {
+      background: #222;
+      border-color: #555;
+    }
+
+    #addBtn:active {
+      background: #000;
+      transform: scale(0.98);
+    }
+
+    .notes-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .note-item {
+      background: #1a1a1a;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeIn 0.3s ease-out;
+      word-break: break-word;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .note-text {
+      flex: 1;
+      font-size: 16px;
+      color: #e0e0e0;
+      padding-right: 12px;
+      line-height: 1.5;
+    }
+
+    .note-delete {
       background: #2a2a2a;
       border: 1px solid #444;
-      border-bottom: none;
-      margin-right: 4px;
-    }
-    .tab.active { background: #1e1e1e; border-color: #555; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .controls {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-      justify-content: center;
-    }
-    .controls button {
-      padding: 8px 14px;
-      background: #2d2d2d;
-      color: #e0e0e0;
-      border: 1px solid #444;
-      font: inherit;
-      font-size: 13px;
+      color: #aaa;
+      font-size: 18px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
       cursor: pointer;
-      outline: none;
-      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
     }
-    .controls button:hover { background: #3a3a3a; }
-    .controls button:active { background: #444; }
-    .status {
-      min-height: 1.2em;
-      margin: 6px 0;
-      font-size: 13px;
-      display: none;
+
+    .note-delete:hover {
+      background: #3a3a3a;
+      color: #fff;
+      border-color: #666;
     }
-    .status.ok { color: #b0c4b0; }
-    .status.error { color: #c4b0b0; }
-    .status.loading { color: #b0b0b0; }
-    textarea {
-      width: 100%;
-      height: 300px;
-      font: 13px 'Courier New', monospace;
-      resize: vertical;
-      border: 1px solid #444;
-      padding: 10px;
-      background: #1a1a1a;
-      color: #e6e6e6;
-      white-space: pre;
-      tab-size: 2;
-    }
-    textarea::placeholder { color: #666; }
-    textarea:focus { outline: 2px solid #555; outline-offset: -2px; }
-    @media (max-width: 500px) {
-      .controls { flex-direction: column; }
-      .controls button { width: 100%; }
-      .tabs { flex-wrap: wrap; }
-      .tab { flex: 1; text-align: center; }
+
+    .empty-state {
+      text-align: center;
+      color: #777;
+      padding: 30px;
+      font-style: italic;
+      border: 1px dashed #333;
+      border-radius: 8px;
+      background: #161616;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>SSTWENDRT DATABASE</h1>
-
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('code')">CODE</div>
-      <div class="tab" onclick="switchTab('nicks')">NICKS</div>
+    <div class="header">
+      <span id="counter">0</span>
+      <h1>Information:</h1>
     </div>
-
-    <div id="code-tab" class="tab-content active">
-      <div class="controls">
-        <button onclick="save('code')">SEND</button>
-        <button onclick="load('code')">LOAD</button>
-        <button onclick="copy('code')">COPY</button>
-        <button onclick="clearAll('code')">CLEAR</button>
-      </div>
-      <div id="code-status" class="status"></div>
-      <textarea id="code" spellcheck="false" placeholder="// Lua script here..."></textarea>
+    <div class="input-group">
+      <input type="text" id="userInput" placeholder=". . .">
+      <button id="addBtn">Add</button>
     </div>
-
-    <div id="nicks-tab" class="tab-content">
-      <div class="controls">
-        <button onclick="save('nicks')">SEND</button>
-        <button onclick="load('nicks')">LOAD</button>
-        <button onclick="copy('nicks')">COPY</button>
-        <button onclick="clearAll('nicks')">CLEAR</button>
-      </div>
-      <div id="nicks-status" class="status"></div>
-      <textarea id="nicks" spellcheck="false" placeholder="User1, User2, Moderator, Admin"></textarea>
-    </div>
+    <ul id="notesList" class="notes-list">
+    </ul>
   </div>
-
   <script>
-    // ✅ ИСПРАВЛЕНО: убраны пробелы в URL
-    const BASE_URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com";
-    const endpoints = {
-      code: `${BASE_URL}/code.json`,
-      nicks: `${BASE_URL}/nicks.json`
-    };
+    const input = document.getElementById('userInput');
+    const addBtn = document.getElementById('addBtn');
+    const notesList = document.getElementById('notesList');
+    const counter = document.getElementById('counter');
+    let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
 
-    function setStatus(id, text, type = "ok") {
-      const el = document.getElementById(`${id}-status`);
-      el.textContent = text;
-      el.className = "status " + type;
-      el.style.display = text ? "block" : "none";
-      if (type === "ok" && text) setTimeout(() => setStatus(id, ""), 1500);
+    function updateCounter() {
+      counter.textContent = notes.length;
     }
 
-    function switchTab(tab) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector(`.tab:nth-child(${tab === 'code' ? 1 : 2})`).classList.add('active');
-      document.getElementById(`${tab}-tab`).classList.add('active');
+    function addNote() {
+      const text = input.value.trim();
+      if (text === '') return;
+      notes.push(text);
+      localStorage.setItem('savedNotes', JSON.stringify(notes));
+      input.value = '';
+      input.focus();
+      renderNotes();
+      updateCounter();
     }
 
-    function load(tab) {
-      const url = endpoints[tab];
-      const textarea = document.getElementById(tab);
-      setStatus(tab, "LOADING", "loading");
-      textarea.disabled = true;
-
-      fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json(); // ✅ теперь .json(), т.к. в /code.json — строка, а не HTML
-        })
-        .then(data => {
-          // Если data === null — пусто
-          const val = typeof data === "string" ? data : (data ? JSON.stringify(data, null, 2) : "");
-          textarea.value = val;
-          setStatus(tab, "OK", "ok");
-        })
-        .catch(err => {
-          textarea.value = "";
-          setStatus(tab, `ERR: ${err.message}`, "error");
-        })
-        .finally(() => {
-          textarea.disabled = false;
-          textarea.focus();
-        });
-    }
-
-    function save(tab) {
-      const textarea = document.getElementById(tab);
-      const content = textarea.value.trim();
-      if (!content) {
-        setStatus(tab, "EMPTY", "error");
+    function renderNotes() {
+      if (notes.length === 0) {
+        notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
         return;
       }
-
-      // ✅ Сохраняем именно как JSON-строку (Firebase требует валидный JSON)
-      const payload = JSON.stringify(content);
-
-      setStatus(tab, "SAVING", "loading");
-      textarea.disabled = true;
-
-      fetch(endpoints[tab], {
-        method: "PUT",
-        body: payload,
-        headers: { "Content-Type": "application/json" }
-      })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r;
-        })
-        .then(() => setStatus(tab, "OK", "ok"))
-        .catch(err => setStatus(tab, `ERR: ${err.message}`, "error"))
-        .finally(() => {
-          textarea.disabled = false;
-          textarea.focus();
+      notesList.innerHTML = '';
+      notes.forEach((note, index) => {
+        const li = document.createElement('li');
+        li.className = 'note-item';
+        // Escape HTML for safety
+        const safeText = note
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+        li.innerHTML = `
+          <span class="note-text">${safeText}</span>
+          <button class="note-delete" data-index="${index}" aria-label="Delete note">🗑️</button>
+        `;
+        notesList.appendChild(li);
+      });
+      document.querySelectorAll('.note-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index, 10);
+          notes.splice(index, 1);
+          localStorage.setItem('savedNotes', JSON.stringify(notes));
+          renderNotes();
+          updateCounter();
         });
+      });
     }
 
-    function copy(tab) {
-      const text = document.getElementById(tab).value;
-      if (!text) {
-        setStatus(tab, "EMPTY", "error");
-        return;
-      }
-      navigator.clipboard?.writeText(text)
-        .then(() => setStatus(tab, "COPIED", "ok"))
-        .catch(() => {
-          const ta = document.createElement("textarea");
-          ta.value = text;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-          setStatus(tab, "COPIED", "ok");
-        });
-    }
-
-    function clearAll(tab) {
-      const textarea = document.getElementById(tab);
-      if (textarea.value && !confirm(`Clear ${tab.toUpperCase()}?`)) return;
-      textarea.value = "";
-      setStatus(tab, "CLEARED", "ok");
-    }
-
-    document.addEventListener("keydown", e => {
-      const activeTab = document.querySelector('.tab-content.active')?.id?.replace('-tab', '');
-      if (!activeTab) return;
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(activeTab); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(activeTab); }
+    addBtn.addEventListener('click', addNote);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addNote();
     });
 
-    // Init
-    load('code');
-    load('nicks');
+    renderNotes();
+    updateCounter();
   </script>
 </body>
 </html>
