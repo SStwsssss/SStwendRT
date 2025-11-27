@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>SSTWENDRT</title>
+  <title>SSTWENDRT • CODE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * {
@@ -10,7 +10,6 @@
       margin: 0;
       padding: 0;
     }
-
     body {
       background: #121212;
       color: #e0e0e0;
@@ -23,43 +22,20 @@
       justify-content: center;
       align-items: flex-start;
     }
-
     .container {
       width: 100%;
       max-width: 720px;
       background: #1e1e1e;
-      border: 1px solid #444444;
+      border: 1px solid #444;
       padding: 20px;
     }
-
     h1 {
       font-weight: normal;
       font-size: 18px;
       margin-bottom: 16px;
-      border-bottom: 1px solid #444444;
-      padding-bottom: 6px;
-      letter-spacing: 1px;
-    }
-
-    .tabs {
-      display: flex;
-      margin-bottom: 12px;
       border-bottom: 1px solid #444;
+      padding-bottom: 6px;
     }
-    .tab {
-      padding: 8px 16px;
-      cursor: pointer;
-      user-select: none;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-bottom: none;
-      margin-right: 4px;
-    }
-    .tab.active { background: #1e1e1e; border-color: #555; }
-
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
     .controls {
       display: flex;
       gap: 8px;
@@ -67,150 +43,85 @@
       margin-bottom: 12px;
       justify-content: center;
     }
-
     .controls button {
       padding: 8px 14px;
       background: #2d2d2d;
       color: #e0e0e0;
-      border: 1px solid #444444;
-      font-family: inherit;
+      border: 1px solid #444;
+      font: inherit;
       font-size: 13px;
       cursor: pointer;
       outline: none;
       transition: background 0.15s;
     }
-
-    .controls button:hover {
-      background: #3a3a3a;
-    }
-
-    .controls button:active {
-      background: #444444;
-    }
-
+    .controls button:hover { background: #3a3a3a; }
+    .controls button:active { background: #444; }
     .status {
       min-height: 1.2em;
       margin: 6px 0;
       font-size: 13px;
       display: none;
     }
-
     .status.ok { color: #b0c4b0; }
     .status.error { color: #c4b0b0; }
     .status.loading { color: #b0b0b0; }
-
     textarea {
       width: 100%;
-      height: 300px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
+      height: 400px;
+      font: 13px 'Courier New', monospace;
       resize: vertical;
-      border: 1px solid #444444;
+      border: 1px solid #444;
       padding: 10px;
       background: #1a1a1a;
       color: #e6e6e6;
       white-space: pre;
       tab-size: 2;
     }
-
-    textarea::placeholder {
-      color: #666666;
-    }
-
     textarea:focus {
-      outline: 2px solid #555555;
+      outline: 2px solid #555;
       outline-offset: -2px;
-    }
-
-    @media (max-width: 500px) {
-      .controls { flex-direction: column; }
-      .controls button { width: 100%; }
-      .tabs { flex-wrap: wrap; }
-      .tab { flex: 1; text-align: center; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>SSTWENDRT DATABASE</h1>
-
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('code')">CODE</div>
-      <div class="tab" onclick="switchTab('nicks')">NICKS</div>
+    <h1>SSTWENDRT • CODE</h1>
+    <div class="controls">
+      <button onclick="save()">SEND</button>
+      <button onclick="load()">LOAD</button>
+      <button onclick="copy()">COPY</button>
+      <button onclick="clearAll()">CLEAR</button>
     </div>
-
-    <div id="code-tab" class="tab-content active">
-      <div class="controls">
-        <button onclick="save('code')">SEND</button>
-        <button onclick="load('code')">LOAD</button>
-        <button onclick="copy('code')">COPY</button>
-        <button onclick="clearAll('code')">CLEAR</button>
-      </div>
-      <div id="code-status" class="status"></div>
-      <textarea id="code" spellcheck="false" placeholder="// Lua script here..."></textarea>
-    </div>
-
-    <div id="nicks-tab" class="tab-content">
-      <div class="controls">
-        <button onclick="save('nicks')">SEND</button>
-        <button onclick="load('nicks')">LOAD</button>
-        <button onclick="copy('nicks')">COPY</button>
-        <button onclick="clearAll('nicks')">CLEAR</button>
-      </div>
-      <div id="nicks-status" class="status"></div>
-      <textarea id="nicks" spellcheck="false" placeholder="User1, User2, Moderator, Admin"></textarea>
-    </div>
+    <div id="status" class="status"></div>
+    <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
   </div>
 
   <script>
-    // 🔁 Изменено: новая Firebase
-    const baseUrl = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/";
-    const endpoints = {
-      code: baseUrl + "code.json",
-      nicks: baseUrl + "nicks.json"
-    };
+    // 🔁 Только ваша Firebase
+    const URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/code.json";
 
-    function setStatus(id, text, type = "ok") {
-      const el = document.getElementById(`${id}-status`);
-      el.textContent = text;
-      el.className = "status " + type;
-      el.style.display = text ? "block" : "none";
-      if (type === "ok" && text) setTimeout(() => setStatus(id, ""), 1500);
+    const textarea = document.getElementById("code");
+    const statusEl = document.getElementById("status");
+
+    function setStatus(text, type = "ok") {
+      statusEl.textContent = text;
+      statusEl.className = "status " + type;
+      statusEl.style.display = text ? "block" : "none";
+      if (type === "ok" && text) setTimeout(() => setStatus(""), 1500);
     }
 
-    function switchTab(tab) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector(`.tab:nth-child(${tab === 'code' ? 1 : 2})`).classList.add('active');
-      document.getElementById(`${tab}-tab`).classList.add('active');
-    }
-
-    function load(tab) {
-      const url = endpoints[tab];
-      const textarea = document.getElementById(tab);
-      setStatus(tab, "LOADING", "loading");
+    function load() {
+      setStatus("LOADING", "loading");
       textarea.disabled = true;
-
-      fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error(`ERR ${r.status}`);
-          return r.json();
-        })
+      fetch(URL)
+        .then(r => r.ok ? r.json() : Promise.reject(`ERR ${r.status}`))
         .then(data => {
-          let val = "";
-          if (typeof data === "string") {
-            val = data;
-          } else if (Array.isArray(data)) {
-            val = data.join(", ");
-          } else if (data !== null && typeof data === "object") {
-            val = JSON.stringify(data, null, 2);
-          }
-          textarea.value = val;
-          setStatus(tab, "OK", "ok");
+          textarea.value = typeof data === "string" ? data : "";
+          setStatus("OK", "ok");
         })
         .catch(err => {
           textarea.value = "";
-          setStatus(tab, `ERR: ${err.message}`, "error");
+          setStatus(`ERR: ${err}`, "error");
         })
         .finally(() => {
           textarea.disabled = false;
@@ -218,72 +129,49 @@
         });
     }
 
-    function save(tab) {
-      const textarea = document.getElementById(tab);
+    function save() {
       const content = textarea.value.trim();
-      if (!content) {
-        setStatus(tab, "EMPTY", "error");
-        return;
-      }
-
-      let payload = JSON.stringify(content);
-      if (tab === "nicks") {
-        // Опционально: сохранить как массив
-        // const arr = content.split(",").map(s => s.trim()).filter(Boolean);
-        // payload = JSON.stringify(arr);
-      }
-
-      setStatus(tab, "SAVING", "loading");
+      if (!content) return setStatus("EMPTY", "error");
+      setStatus("SAVING", "loading");
       textarea.disabled = true;
-
-      fetch(endpoints[tab], {
+      fetch(URL, {
         method: "PUT",
-        body: payload,
+        body: JSON.stringify(content),
         headers: { "Content-Type": "application/json" }
       })
-        .then(r => {
-          if (!r.ok) throw new Error(`ERR ${r.status}`);
-          return r;
-        })
-        .then(() => setStatus(tab, "OK", "ok"))
-        .catch(err => setStatus(tab, `ERR: ${err.message}`, "error"))
+        .then(r => r.ok ? r : Promise.reject(`ERR ${r.status}`))
+        .then(() => setStatus("OK", "ok"))
+        .catch(err => setStatus(`ERR: ${err}`, "error"))
         .finally(() => {
           textarea.disabled = false;
           textarea.focus();
         });
     }
 
-    function copy(tab) {
-      const text = document.getElementById(tab).value;
-      if (!text) {
-        setStatus(tab, "EMPTY", "error");
-        return;
-      }
+    function copy() {
+      const text = textarea.value;
+      if (!text) return setStatus("EMPTY", "error");
       navigator.clipboard.writeText(text)
-        .then(() => setStatus(tab, "COPIED", "ok"))
+        .then(() => setStatus("COPIED", "ok"))
         .catch(() => {
-          const el = document.getElementById(tab);
-          el.select();
+          textarea.select();
           document.execCommand("copy");
-          setStatus(tab, "COPIED", "ok");
+          setStatus("COPIED", "ok");
         });
     }
 
-    function clearAll(tab) {
-      const el = document.getElementById(tab);
-      if (el.value && !confirm(`Clear ${tab.toUpperCase()}?`)) return;
-      el.value = "";
-      setStatus(tab, "CLEARED", "ok");
+    function clearAll() {
+      if (textarea.value && !confirm("Clear code?")) return;
+      textarea.value = "";
+      setStatus("CLEARED", "ok");
     }
 
     document.addEventListener("keydown", e => {
-      const tab = document.querySelector('.tab-content.active').id.replace('-tab', '');
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(tab); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(tab); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
     });
 
-    load('code');
-    load('nicks');
+    load(); // авто-загрузка при открытии
   </script>
 </body>
 </html>
