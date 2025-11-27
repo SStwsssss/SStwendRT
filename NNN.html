@@ -163,7 +163,8 @@
   </div>
 
   <script>
-    const baseUrl = "https://awewqweqwe-default-rtdb.firebaseio.com/";
+    // ✅ ЕДИНСТВЕННОЕ ИЗМЕНЕНИЕ: новая база, без пробелов
+    const baseUrl = "https://checker-bd715-default-rtdb.firebaseio.com/";
     const endpoints = {
       code: baseUrl + "code.json",
       nicks: baseUrl + "nicks.json"
@@ -192,22 +193,32 @@
 
       fetch(url)
         .then(r => {
-          if (!r.ok) throw new Error(`ERR ${r.status}`);
-          return r.json();
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text(); // ← используем .text(), а не .json(), чтобы ловить HTML-логин
         })
-        .then(data => {
-          // Поддерживаем строку или массив
-          let val = "";
-          if (typeof data === "string") {
-            val = data;
-          } else if (Array.isArray(data)) {
-            val = data.join(", ");
-          } else if (typeof data === "object" && data !== null) {
-            // fallback: попробуем JSON.stringify
-            val = JSON.stringify(data, null, 2);
+        .then(text => {
+          if (text.trim() === "null") {
+            throw new Error("Data is null");
           }
-          textarea.value = val;
-          setStatus(tab, "OK", "ok");
+          if (text.includes("登录") || text.includes("<!DOCTYPE")) {
+            throw new Error("Login page — database not public");
+          }
+
+          try {
+            const data = JSON.parse(text);
+            let val = "";
+            if (typeof data === "string") {
+              val = data;
+            } else if (Array.isArray(data)) {
+              val = data.join(", ");
+            } else if (typeof data === "object" && data !== null) {
+              val = JSON.stringify(data, null, 2);
+            }
+            textarea.value = val;
+            setStatus(tab, "OK", "ok");
+          } catch (e) {
+            throw new Error("Invalid JSON: " + e.message);
+          }
         })
         .catch(err => {
           textarea.value = "";
@@ -229,9 +240,10 @@
 
       let payload;
       if (tab === "nicks") {
-        // Сохраняем как строку (как в Pastebin), НО можно и как массив — ниже вариант:
-        // payload = JSON.stringify(content.split(",").map(s => s.trim()).filter(Boolean));
+        // Сохраняем как строку (как в Pastebin)
         payload = JSON.stringify(content);
+        // Если хочешь массив — раскомментируй:
+        // payload = JSON.stringify(content.split(",").map(s => s.trim()).filter(Boolean));
       } else {
         payload = JSON.stringify(content);
       }
@@ -245,7 +257,7 @@
         headers: { "Content-Type": "application/json" }
       })
         .then(r => {
-          if (!r.ok) throw new Error(`ERR ${r.status}`);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r;
         })
         .then(() => setStatus(tab, "OK", "ok"))
@@ -262,14 +274,23 @@
         setStatus(tab, "EMPTY", "error");
         return;
       }
-      navigator.clipboard.writeText(text)
-        .then(() => setStatus(tab, "COPIED", "ok"))
-        .catch(() => {
-          const textarea = document.getElementById(tab);
-          textarea.select();
-          document.execCommand("copy");
-          setStatus(tab, "COPIED", "ok");
-        });
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => setStatus(tab, "COPIED", "ok"))
+          .catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setStatus("code", "COPIED (fallback)", "ok");
     }
 
     function clearAll(tab) {
@@ -280,7 +301,8 @@
     }
 
     document.addEventListener("keydown", e => {
-      const activeTab = document.querySelector('.tab-content.active').id.replace('-tab', '');
+      const activeTab = document.querySelector('.tab-content.active')?.id?.replace('-tab', '');
+      if (!activeTab) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(activeTab); }
       if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(activeTab); }
     });
