@@ -12,9 +12,9 @@
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background-color: #f8f8f8;
-      color: #000;
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background-color: #121212; /* Almost black */
+      color: #e0e0e0; /* Soft white for readability */
       padding: 30px;
       min-height: 100vh;
     }
@@ -38,11 +38,13 @@
       border-radius: 20px;
       font-size: 16px;
       font-weight: 600;
+      border: 1px solid #333;
     }
 
     h1 {
       font-weight: 600;
-      color: #000;
+      color: #fff;
+      letter-spacing: -0.5px;
     }
 
     .input-group {
@@ -55,31 +57,39 @@
       flex: 1;
       padding: 14px 16px;
       font-size: 16px;
-      border: 2px solid #ccc;
-      border-radius: 12px;
+      border: 2px solid #444;
+      border-radius: 8px;
       outline: none;
-      background: #fff;
-      color: #000;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      caret-color: #fff;
     }
 
     #userInput:focus {
-      border-color: #000;
-      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
     }
 
     #addBtn {
       background: #000;
       color: #fff;
-      border: none;
-      border-radius: 12px;
+      border: 1px solid #333;
+      border-radius: 8px;
       padding: 14px 20px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
     }
 
     #addBtn:hover {
-      background: #333;
+      background: #222;
+      border-color: #555;
+    }
+
+    #addBtn:active {
+      background: #000;
+      transform: scale(0.98);
     }
 
     .notes-list {
@@ -90,41 +100,49 @@
     }
 
     .note-item {
-      background: #fff;
+      background: #1a1a1a;
       padding: 16px;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      border-radius: 8px;
+      border: 1px solid #333;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      animation: fadeIn 0.4s ease-out;
+      animation: fadeIn 0.3s ease-out;
       word-break: break-word;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     .note-text {
       flex: 1;
       font-size: 16px;
-      color: #000;
+      color: #e0e0e0;
       padding-right: 12px;
+      line-height: 1.5;
     }
 
     .note-delete {
-      background: none;
-      border: none;
-      color: #555;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #aaa;
       font-size: 18px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
       cursor: pointer;
-      opacity: 0.7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
     }
 
     .note-delete:hover {
-      opacity: 1;
-      color: #000;
+      background: #3a3a3a;
+      color: #fff;
+      border-color: #666;
     }
 
     .empty-state {
@@ -132,6 +150,9 @@
       color: #777;
       padding: 30px;
       font-style: italic;
+      border: 1px dashed #333;
+      border-radius: 8px;
+      background: #161616;
     }
   </style>
 </head>
@@ -179,27 +200,28 @@
       notes.forEach((note, index) => {
         const li = document.createElement('li');
         li.className = 'note-item';
+        // Escape HTML for safety
+        const safeText = note
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
         li.innerHTML = `
-          <span class="note-text">${escapeHtml(note)}</span>
-          <button class="note-delete" data-index="${index}">🗑️</button>
+          <span class="note-text">${safeText}</span>
+          <button class="note-delete" data-index="${index}" aria-label="Delete note">🗑️</button>
         `;
         notesList.appendChild(li);
       });
       document.querySelectorAll('.note-delete').forEach(btn => {
         btn.addEventListener('click', () => {
-          const index = parseInt(btn.dataset.index);
+          const index = parseInt(btn.dataset.index, 10);
           notes.splice(index, 1);
           localStorage.setItem('savedNotes', JSON.stringify(notes));
           renderNotes();
           updateCounter();
         });
       });
-    }
-
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
     }
 
     addBtn.addEventListener('click', addNote);
