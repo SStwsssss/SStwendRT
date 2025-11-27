@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>SStwendRT — Lua Database</title>
+  <title>SStwendRT Database</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root {
@@ -154,47 +154,36 @@
 
     <div class="controls">
       <button onclick="save()" title="Сохранить в Firebase (PUT)">
-        💾 Сохранить
+        💾 Send
       </button>
       <button onclick="load()" title="Принудительно перезагрузить из Firebase">
-        🔄 Загрузить
+        🔄 Load
       </button>
       <button onclick="copy()" title="Копировать содержимое в буфер">
-        📋 Копировать
+        📋 Copy
       </button>
       <button onclick="clearAll()" title="Очистить поле (не удаляет из Firebase!)">
-        🗑️ Очистить
+        🗑️ Clear
       </button>
     </div>
 
     <div id="status" class="status" style="display:none;"></div>
 
-    <textarea id="code" spellcheck="false" placeholder="Введите Lua-код. Поддерживаются: комментарии (--), строки, числа, ключевые слова.">Загрузка...</textarea>
+    <textarea id="code" spellcheck="false" placeholder=". . ."></textarea>
   </div>
 
   <script>
     const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
     const textarea = document.getElementById("code");
     const statusEl = document.getElementById("status");
-
-    // Простой highlighter для Lua (client-side, без зависимостей)
     function highlightLua(code) {
-      // Экранируем HTML
       code = code
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
-
-      // Комментарии (--) до конца строки
       code = code.replace(/(--[^\n]*)/g, '<span class="cmt">$1</span>');
-
-      // Строки: "..." и '...'
       code = code.replace(/("([^"\\]|\\.)*")|('([^'\\]|\\.)*')/g, '<span class="str">$1$3</span>');
-
-      // Числа (целые и float)
       code = code.replace(/\b(\d+\.?\d*|\.\d+)\b/g, '<span class="num">$1</span>');
-
-      // Ключевые слова Lua
       const keywords = [
         "and", "break", "do", "else", "elseif", "end", "false", "for", "function",
         "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true",
@@ -202,8 +191,6 @@
       ];
       const kwRegex = new RegExp(`\\b(${keywords.join("|")})\\b`, "g");
       code = code.replace(kwRegex, '<span class="kw">$1</span>');
-
-      // Простая эвристика для имён функций/переменных после `function`
       code = code.replace(/(function)\s+([a-zA-Z_]\w*)/g, '$1 <span class="fn">$2</span>');
 
       return code;
@@ -211,16 +198,10 @@
 
     function updateHighlight() {
       const code = textarea.value;
-      // Простая замена — можно улучшить по желанию
-      // Сейчас делаем «живую» подсветку при фокусе/вводе (опционально — для производительности отключим на мобильных или при >5к символов)
       if (code.length < 3000) {
-        // Применяем подсветку (заменяем текст на span’ы — но только визуально, значение textarea остаётся чистым)
-        // Для простоты — оставим пока без live-хайлайта. Но оставим функцию, если захотите добавить <pre id="preview"> позже.
       }
     }
-
     textarea.addEventListener("input", () => {
-      // updateHighlight(); // ← раскомментируйте для live-highlight (может тормозить на больших скриптах)
     });
 
     function setStatus(text, type = "ok") {
@@ -230,7 +211,7 @@
     }
 
     function load() {
-      setStatus("Загрузка...", "loading");
+      setStatus("Load", "loading");
       textarea.disabled = true;
 
       fetch(url)
@@ -240,12 +221,12 @@
         })
         .then(data => {
           textarea.value = typeof data === "string" ? data : "";
-          setStatus("✅ Загружено", "ok");
+          setStatus("Success", "ok");
           setTimeout(() => setStatus(""), 2000);
         })
         .catch(err => {
           console.error(err);
-          textarea.value = "-- Ошибка загрузки\n";
+          textarea.value = "Error Load\n";
           setStatus(`❗ Ошибка: ${err.message || "неизвестно"}`, "err");
         })
         .finally(() => {
@@ -275,12 +256,12 @@
         return r;
       })
       .then(() => {
-        setStatus("✅ Сохранено", "ok");
+        setStatus("Success", "ok");
         setTimeout(() => setStatus(""), 1500);
       })
       .catch(err => {
         console.error(err);
-        setStatus(`❗ Ошибка сохранения: ${err.message || "сеть?"}`, "err");
+        setStatus(`Error: ${err.message || "сеть?"}`, "err");
       })
       .finally(() => {
         textarea.disabled = false;
@@ -291,26 +272,26 @@
     function copy() {
       const text = textarea.value;
       if (!text) {
-        setStatus("⚠ Нечего копировать", "err");
+        setStatus("Nothing To Copy", "err");
         setTimeout(() => setStatus(""), 1500);
         return;
       }
       navigator.clipboard.writeText(text)
         .then(() => {
-          setStatus("📋 Скопировано!", "ok");
+          setStatus("Copyed", "ok");
           setTimeout(() => setStatus(""), 1500);
         })
         .catch(() => {
           // fallback
           textarea.select();
           document.execCommand("copy");
-          setStatus("📋 Скопировано (fallback)", "ok");
+          setStatus("Copyed", "ok");
           setTimeout(() => setStatus(""), 1500);
         });
     }
 
     function clearAll() {
-      if (textarea.value.trim() && !confirm("Очистить поле? Данные в Firebase не изменятся.")) return;
+      if (textarea.value.trim() && !confirm("Clear?")) return;
       textarea.value = "";
       textarea.focus();
       setStatus("Очищено локально", "ok");
