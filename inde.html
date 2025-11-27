@@ -13,8 +13,8 @@
 
     body {
       font-family: 'Courier New', monospace;
-      background: #fff;
-      color: #000;
+      background: #121212;
+      color: #e0e0e0;
       line-height: 1.6;
       padding: 24px;
     }
@@ -28,24 +28,25 @@
       text-align: center;
       margin-bottom: 32px;
       padding-bottom: 20px;
-      border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid #444;
     }
 
     h1 {
       font-weight: 600;
       letter-spacing: 1px;
       margin-bottom: 8px;
+      color: #fff;
     }
 
     h1 em {
       font-style: normal;
       font-weight: 400;
-      color: #555;
+      color: #aaa;
     }
 
     .subtitle {
       font-size: 16px;
-      color: #555;
+      color: #aaa;
     }
 
     .section {
@@ -57,7 +58,8 @@
       font-weight: 600;
       margin-bottom: 16px;
       padding-bottom: 6px;
-      border-bottom: 1px solid #999;
+      border-bottom: 1px solid #555;
+      color: #fff;
     }
 
     .input-group {
@@ -71,16 +73,16 @@
       padding: 12px 14px;
       font-family: inherit;
       font-size: 15px;
-      border: 1px solid #999;
+      border: 1px solid #555;
       border-radius: 4px;
-      background: #fff;
-      color: #000;
+      background: #1e1e1e;
+      color: #e0e0e0;
       outline: none;
     }
 
     input:focus {
-      border-color: #000;
-      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+      border-color: #888;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
     }
 
     button {
@@ -94,7 +96,7 @@
       border-radius: 4px;
       cursor: pointer;
       white-space: nowrap;
-      transition: background 0.2s;
+      transition: background 0.2s, opacity 0.2s;
     }
 
     button:hover {
@@ -103,6 +105,7 @@
 
     button:active {
       transform: translateY(1px);
+      background: #000;
     }
 
     .btn-group {
@@ -145,7 +148,7 @@
         <button onclick="window.location.href='sosal.html'">Chat</button>
         <button onclick="window.location.href='code.html'">Whitelist</button>
         <button onclick="window.location.href='NNN.html'">Data Base</button>
-          <button onclick="window.location.href='adolf.html'">Checker</button>
+        <button onclick="window.location.href='adolf.html'">Checker</button>
         <button onclick="window.location.href='weqweqeqwewq.html'">Information DB</button>
       </div>
     </section>
@@ -197,10 +200,9 @@
           })
           .catch(() => {});
       } catch (e) {
+        // silently ignore errors (e.g. Firebase already initialized or network issue)
       }
     })();
   </script>
 </body>
 </html>
-
-
