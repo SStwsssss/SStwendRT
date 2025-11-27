@@ -1,16 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>SSTWENDRT</title>
+  <title>SSTWENDRT DATABASE</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #121212;
       color: #e0e0e0;
@@ -23,24 +18,21 @@
       justify-content: center;
       align-items: flex-start;
     }
-
     .container {
       width: 100%;
       max-width: 720px;
       background: #1e1e1e;
-      border: 1px solid #444444;
+      border: 1px solid #444;
       padding: 20px;
     }
-
     h1 {
       font-weight: normal;
       font-size: 18px;
       margin-bottom: 16px;
-      border-bottom: 1px solid #444444;
+      border-bottom: 1px solid #444;
       padding-bottom: 6px;
       letter-spacing: 1px;
     }
-
     .tabs {
       display: flex;
       margin-bottom: 12px;
@@ -56,10 +48,8 @@
       margin-right: 4px;
     }
     .tab.active { background: #1e1e1e; border-color: #555; }
-
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-
     .controls {
       display: flex;
       gap: 8px;
@@ -67,61 +57,42 @@
       margin-bottom: 12px;
       justify-content: center;
     }
-
     .controls button {
       padding: 8px 14px;
       background: #2d2d2d;
       color: #e0e0e0;
-      border: 1px solid #444444;
-      font-family: inherit;
+      border: 1px solid #444;
+      font: inherit;
       font-size: 13px;
       cursor: pointer;
       outline: none;
       transition: background 0.15s;
     }
-
-    .controls button:hover {
-      background: #3a3a3a;
-    }
-
-    .controls button:active {
-      background: #444444;
-    }
-
+    .controls button:hover { background: #3a3a3a; }
+    .controls button:active { background: #444; }
     .status {
       min-height: 1.2em;
       margin: 6px 0;
       font-size: 13px;
       display: none;
     }
-
     .status.ok { color: #b0c4b0; }
     .status.error { color: #c4b0b0; }
     .status.loading { color: #b0b0b0; }
-
     textarea {
       width: 100%;
       height: 300px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
+      font: 13px 'Courier New', monospace;
       resize: vertical;
-      border: 1px solid #444444;
+      border: 1px solid #444;
       padding: 10px;
       background: #1a1a1a;
       color: #e6e6e6;
       white-space: pre;
       tab-size: 2;
     }
-
-    textarea::placeholder {
-      color: #666666;
-    }
-
-    textarea:focus {
-      outline: 2px solid #555555;
-      outline-offset: -2px;
-    }
-
+    textarea::placeholder { color: #666; }
+    textarea:focus { outline: 2px solid #555; outline-offset: -2px; }
     @media (max-width: 500px) {
       .controls { flex-direction: column; }
       .controls button { width: 100%; }
@@ -163,11 +134,11 @@
   </div>
 
   <script>
-    // ✅ ЕДИНСТВЕННОЕ ИЗМЕНЕНИЕ: новая база, без пробелов
-    const baseUrl = "https://checker-bd715-default-rtdb.firebaseio.com/";
+    // ✅ ИСПРАВЛЕНО: убраны пробелы в URL
+    const BASE_URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com";
     const endpoints = {
-      code: baseUrl + "code.json",
-      nicks: baseUrl + "nicks.json"
+      code: `${BASE_URL}/code.json`,
+      nicks: `${BASE_URL}/nicks.json`
     };
 
     function setStatus(id, text, type = "ok") {
@@ -194,31 +165,13 @@
       fetch(url)
         .then(r => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text(); // ← используем .text(), а не .json(), чтобы ловить HTML-логин
+          return r.json(); // ✅ теперь .json(), т.к. в /code.json — строка, а не HTML
         })
-        .then(text => {
-          if (text.trim() === "null") {
-            throw new Error("Data is null");
-          }
-          if (text.includes("登录") || text.includes("<!DOCTYPE")) {
-            throw new Error("Login page — database not public");
-          }
-
-          try {
-            const data = JSON.parse(text);
-            let val = "";
-            if (typeof data === "string") {
-              val = data;
-            } else if (Array.isArray(data)) {
-              val = data.join(", ");
-            } else if (typeof data === "object" && data !== null) {
-              val = JSON.stringify(data, null, 2);
-            }
-            textarea.value = val;
-            setStatus(tab, "OK", "ok");
-          } catch (e) {
-            throw new Error("Invalid JSON: " + e.message);
-          }
+        .then(data => {
+          // Если data === null — пусто
+          const val = typeof data === "string" ? data : (data ? JSON.stringify(data, null, 2) : "");
+          textarea.value = val;
+          setStatus(tab, "OK", "ok");
         })
         .catch(err => {
           textarea.value = "";
@@ -238,15 +191,8 @@
         return;
       }
 
-      let payload;
-      if (tab === "nicks") {
-        // Сохраняем как строку (как в Pastebin)
-        payload = JSON.stringify(content);
-        // Если хочешь массив — раскомментируй:
-        // payload = JSON.stringify(content.split(",").map(s => s.trim()).filter(Boolean));
-      } else {
-        payload = JSON.stringify(content);
-      }
+      // ✅ Сохраняем именно как JSON-строку (Firebase требует валидный JSON)
+      const payload = JSON.stringify(content);
 
       setStatus(tab, "SAVING", "loading");
       textarea.disabled = true;
@@ -274,23 +220,17 @@
         setStatus(tab, "EMPTY", "error");
         return;
       }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text)
-          .then(() => setStatus(tab, "COPIED", "ok"))
-          .catch(() => fallbackCopy(text));
-      } else {
-        fallbackCopy(text);
-      }
-    }
-
-    function fallbackCopy(text) {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      setStatus("code", "COPIED (fallback)", "ok");
+      navigator.clipboard?.writeText(text)
+        .then(() => setStatus(tab, "COPIED", "ok"))
+        .catch(() => {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          setStatus(tab, "COPIED", "ok");
+        });
     }
 
     function clearAll(tab) {
