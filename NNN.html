@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Information Data Base</title>
+  <meta charset="utf-8">
+  <title>SSTWENDRT</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     * {
       box-sizing: border-box;
@@ -12,225 +12,203 @@
     }
 
     body {
-      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      background-color: #121212; /* Almost black */
-      color: #e0e0e0; /* Soft white for readability */
-      padding: 30px;
+      background: #121212;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 20px;
       min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
     }
 
     .container {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
-    #counter {
-      background: #000;
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 16px;
-      font-weight: 600;
-      border: 1px solid #333;
+      width: 100%;
+      max-width: 720px;
+      background: #1e1e1e;
+      border: 1px solid #444444;
+      padding: 20px;
     }
 
     h1 {
-      font-weight: 600;
-      color: #fff;
-      letter-spacing: -0.5px;
-    }
-
-    .input-group {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-
-    #userInput {
-      flex: 1;
-      padding: 14px 16px;
-      font-size: 16px;
-      border: 2px solid #444;
-      border-radius: 8px;
-      outline: none;
-      background: #1e1e1e;
-      color: #f0f0f0;
-      caret-color: #fff;
-    }
-
-    #userInput:focus {
-      border-color: #fff;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
-    }
-
-    #addBtn {
-      background: #000;
-      color: #fff;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 14px 20px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-    }
-
-    #addBtn:hover {
-      background: #222;
-      border-color: #555;
-    }
-
-    #addBtn:active {
-      background: #000;
-      transform: scale(0.98);
-    }
-
-    .notes-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .note-item {
-      background: #1a1a1a;
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid #333;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      animation: fadeIn 0.3s ease-out;
-      word-break: break-word;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .note-text {
-      flex: 1;
-      font-size: 16px;
-      color: #e0e0e0;
-      padding-right: 12px;
-      line-height: 1.5;
-    }
-
-    .note-delete {
-      background: #2a2a2a;
-      border: 1px solid #444;
-      color: #aaa;
+      font-weight: normal;
       font-size: 18px;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      cursor: pointer;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #444444;
+      padding-bottom: 6px;
+      letter-spacing: 1px;
+    }
+
+    .controls {
       display: flex;
-      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
       justify-content: center;
-      transition: all 0.2s;
     }
 
-    .note-delete:hover {
+    .controls button {
+      padding: 8px 14px;
+      background: #2d2d2d;
+      color: #e0e0e0;
+      border: 1px solid #444444;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      transition: background 0.15s;
+    }
+
+    .controls button:hover {
       background: #3a3a3a;
-      color: #fff;
-      border-color: #666;
     }
 
-    .empty-state {
-      text-align: center;
-      color: #777;
-      padding: 30px;
-      font-style: italic;
-      border: 1px dashed #333;
-      border-radius: 8px;
-      background: #161616;
+    .controls button:active {
+      background: #444444;
+    }
+
+    .status {
+      min-height: 1.2em;
+      margin: 6px 0;
+      font-size: 13px;
+      display: none;
+    }
+
+    .status.ok { color: #b0c4b0; }       /* very soft green-gray */
+    .status.error { color: #c4b0b0; }    /* very soft red-gray */
+    .status.loading { color: #b0b0b0; }  /* medium gray */
+
+    textarea {
+      width: 100%;
+      height: 360px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      resize: vertical;
+      border: 1px solid #444444;
+      padding: 10px;
+      background: #1a1a1a;
+      color: #e6e6e6;
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    textarea::placeholder {
+      color: #666666;
+    }
+
+    textarea:focus {
+      outline: 2px solid #555555;
+      outline-offset: -2px;
+    }
+
+    @media (max-width: 500px) {
+      .controls { flex-direction: column; }
+      .controls button { width: 100%; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <span id="counter">0</span>
-      <h1>Information:</h1>
+    <h1>SSTWENDRT DATABASE</h1>
+
+    <div class="controls">
+      <button onclick="save()">SEND</button>
+      <button onclick="load()">LOAD</button>
+      <button onclick="copy()">COPY</button>
+      <button onclick="clearAll()">CLEAR</button>
     </div>
-    <div class="input-group">
-      <input type="text" id="userInput" placeholder=". . .">
-      <button id="addBtn">Add</button>
-    </div>
-    <ul id="notesList" class="notes-list">
-    </ul>
+
+    <div id="status" class="status"></div>
+
+    <textarea id="code" spellcheck="false" placeholder=". . ."></textarea>
   </div>
+
   <script>
-    const input = document.getElementById('userInput');
-    const addBtn = document.getElementById('addBtn');
-    const notesList = document.getElementById('notesList');
-    const counter = document.getElementById('counter');
-    let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
+    const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
+    const textarea = document.getElementById("code");
+    const statusEl = document.getElementById("status");
 
-    function updateCounter() {
-      counter.textContent = notes.length;
+    function setStatus(text, type = "ok") {
+      statusEl.textContent = text;
+      statusEl.className = "status " + type;
+      statusEl.style.display = text ? "block" : "none";
+      if (type === "ok" && text) setTimeout(() => setStatus(""), 1500);
     }
 
-    function addNote() {
-      const text = input.value.trim();
-      if (text === '') return;
-      notes.push(text);
-      localStorage.setItem('savedNotes', JSON.stringify(notes));
-      input.value = '';
-      input.focus();
-      renderNotes();
-      updateCounter();
+    function load() {
+      setStatus("LOADING", "loading");
+      textarea.disabled = true;
+
+      fetch(url)
+        .then(r => r.ok ? r.json() : Promise.reject(`ERR ${r.status}`))
+        .then(data => {
+          textarea.value = typeof data === "string" ? data : "";
+          setStatus("OK", "ok");
+        })
+        .catch(err => {
+          textarea.value = "";
+          setStatus(`ERR: ${err}`, "error");
+        })
+        .finally(() => {
+          textarea.disabled = false;
+          textarea.focus();
+        });
     }
 
-    function renderNotes() {
-      if (notes.length === 0) {
-        notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
+    function save() {
+      const content = textarea.value.trim();
+      if (!content) {
+        setStatus("EMPTY", "error");
         return;
       }
-      notesList.innerHTML = '';
-      notes.forEach((note, index) => {
-        const li = document.createElement('li');
-        li.className = 'note-item';
-        // Escape HTML for safety
-        const safeText = note
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-        li.innerHTML = `
-          <span class="note-text">${safeText}</span>
-          <button class="note-delete" data-index="${index}" aria-label="Delete note">🗑️</button>
-        `;
-        notesList.appendChild(li);
-      });
-      document.querySelectorAll('.note-delete').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const index = parseInt(btn.dataset.index, 10);
-          notes.splice(index, 1);
-          localStorage.setItem('savedNotes', JSON.stringify(notes));
-          renderNotes();
-          updateCounter();
+
+      setStatus("SAVING", "loading");
+      textarea.disabled = true;
+
+      fetch(url, {
+        method: "PUT",
+        body: JSON.stringify(content),
+        headers: { "Content-Type": "application/json" }
+      })
+        .then(r => r.ok ? r : Promise.reject(`ERR ${r.status}`))
+        .then(() => setStatus("OK", "ok"))
+        .catch(err => setStatus(`ERR: ${err}`, "error"))
+        .finally(() => {
+          textarea.disabled = false;
+          textarea.focus();
         });
-      });
     }
 
-    addBtn.addEventListener('click', addNote);
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addNote();
+    function copy() {
+      const text = textarea.value;
+      if (!text) {
+        setStatus("EMPTY", "error");
+        return;
+      }
+      navigator.clipboard.writeText(text)
+        .then(() => setStatus("COPIED", "ok"))
+        .catch(() => {
+          textarea.select();
+          document.execCommand("copy");
+          setStatus("COPIED", "ok");
+        });
+    }
+
+    function clearAll() {
+      if (textarea.value && !confirm("CLEAR?")) return;
+      textarea.value = "";
+      setStatus("CLEARED", "ok");
+    }
+
+    document.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
     });
 
-    renderNotes();
-    updateCounter();
+    // Init
+    load();
   </script>
 </body>
 </html>
