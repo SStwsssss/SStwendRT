@@ -5,11 +5,7 @@
   <title>SStwendRT Checker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #121212;
       color: #e0e0e0;
@@ -97,7 +93,8 @@
   </div>
 
   <script>
-    const URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/code.json";
+    // 🔥 Запись в КОРЕНЬ — именно так, чтобы / возвращал код напрямую
+    const URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/.json";
 
     const textarea = document.getElementById("code");
     const statusEl = document.getElementById("status");
@@ -113,14 +110,24 @@
       setStatus("LOADING", "loading");
       textarea.disabled = true;
       fetch(URL)
-        .then(r => r.ok ? r.json() : Promise.reject(`ERR ${r.status}`))
-        .then(data => {
-          textarea.value = typeof data === "string" ? data : "";
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text(); // ⚠️ не .json(), потому что корень — строка
+        })
+        .then(text => {
+          // Firebase оборачивает строку в JSON-кавычки: "\"code\\nmore\""
+          // Поэтому если пришёл JSON-строка — распарсим
+          try {
+            const decoded = JSON.parse(text);
+            textarea.value = typeof decoded === "string" ? decoded : text;
+          } catch (e) {
+            textarea.value = text;
+          }
           setStatus("OK", "ok");
         })
         .catch(err => {
           textarea.value = "";
-          setStatus(`ERR: ${err}`, "error");
+          setStatus(`ERR: ${err.message || err}`, "error");
         })
         .finally(() => {
           textarea.disabled = false;
@@ -129,18 +136,24 @@
     }
 
     function save() {
-      const content = textarea.value.trim();
-      if (!content) return setStatus("EMPTY", "error");
+      const content = textarea.value;
+      if (!content.trim()) return setStatus("EMPTY", "error");
+
       setStatus("SAVING", "loading");
       textarea.disabled = true;
+
+      // 🔥 ВАЖНО: в корень можно писать ТОЛЬКО строку → оборачиваем в JSON.stringify
       fetch(URL, {
         method: "PUT",
-        body: JSON.stringify(content),
+        body: JSON.stringify(content), // ← это делает строку валидным JSON: "\"print(...)\""
         headers: { "Content-Type": "application/json" }
       })
-        .then(r => r.ok ? r : Promise.reject(`ERR ${r.status}`))
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text();
+        })
         .then(() => setStatus("OK", "ok"))
-        .catch(err => setStatus(`ERR: ${err}`, "error"))
+        .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
         .finally(() => {
           textarea.disabled = false;
           textarea.focus();
@@ -150,13 +163,19 @@
     function copy() {
       const text = textarea.value;
       if (!text) return setStatus("EMPTY", "error");
-      navigator.clipboard.writeText(text)
-        .then(() => setStatus("COPIED", "ok"))
-        .catch(() => {
-          textarea.select();
-          document.execCommand("copy");
-          setStatus("COPIED", "ok");
-        });
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text)
+          .then(() => setStatus("COPIED", "ok"))
+          .catch(() => fallbackCopy());
+      } else {
+        fallbackCopy();
+      }
+    }
+
+    function fallbackCopy() {
+      textarea.select();
+      document.execCommand("copy");
+      setStatus("COPIED", "ok");
     }
 
     function clearAll() {
@@ -170,6 +189,7 @@
       if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
     });
 
+    // При открытии — сразу грузим
     load();
   </script>
 </body>
