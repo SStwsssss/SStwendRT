@@ -32,6 +32,14 @@
       border-bottom: 1px solid #444;
       padding-bottom: 6px;
     }
+    .section {
+      margin-bottom: 24px;
+    }
+    .section h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      opacity: 0.8;
+    }
     .controls {
       display: flex;
       gap: 8px;
@@ -61,9 +69,8 @@
     .status.ok { color: #b0c4b0; }
     .status.error { color: #c4b0b0; }
     .status.loading { color: #b0b0b0; }
-    textarea {
+    textarea, input[type="text"] {
       width: 100%;
-      height: 400px;
       font: 13px 'Courier New', monospace;
       resize: vertical;
       border: 1px solid #444;
@@ -73,7 +80,13 @@
       white-space: pre;
       tab-size: 2;
     }
-    textarea:focus {
+    textarea {
+      height: 400px;
+    }
+    input[type="text"] {
+      height: 40px;
+    }
+    textarea:focus, input[type="text"]:focus {
       outline: 2px solid #555;
       outline-offset: -2px;
     }
@@ -81,107 +94,193 @@
 </head>
 <body>
   <div class="container">
-    <h1>Code:</h1>
-    <div class="controls">
-      <button onclick="save()">SEND</button>
-      <button onclick="load()">LOAD</button>
-      <button onclick="copy()">COPY</button>
-      <button onclick="clearAll()">CLEAR</button>
+    <!-- Code Section -->
+    <div class="section">
+      <h2>Code:</h2>
+      <div class="controls">
+        <button onclick="save()">SEND</button>
+        <button onclick="load()">LOAD</button>
+        <button onclick="copy()">COPY</button>
+        <button onclick="clearAll()">CLEAR</button>
+      </div>
+      <div id="status" class="status"></div>
+      <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
     </div>
-    <div id="status" class="status"></div>
-    <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
+
+    <!-- Nicks Section -->
+    <div class="section">
+      <h2>Nicks (comma-separated):</h2>
+      <div class="controls">
+        <button onclick="saveNicks()">SEND NICKS</button>
+        <button onclick="loadNicks()">LOAD NICKS</button>
+        <button onclick="copyNicks()">COPY NICKS</button>
+        <button onclick="clearNicks()">CLEAR NICKS</button>
+      </div>
+      <div id="statusNicks" class="status"></div>
+      <input type="text" id="nicks" spellcheck="false" placeholder="plr1,plr2,plr3">
+    </div>
   </div>
 
   <script>
-    // 🔥 Запись в КОРЕНЬ — именно так, чтобы / возвращал код напрямую
-    const URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/.json";
+    const CODE_URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/.json";
+    const NICKS_URL = "https://awewqweqwe-default-rtdb.firebaseio.com/nicks.json";
 
     const textarea = document.getElementById("code");
+    const nicksInput = document.getElementById("nicks");
     const statusEl = document.getElementById("status");
+    const statusNicksEl = document.getElementById("statusNicks");
 
-    function setStatus(text, type = "ok") {
-      statusEl.textContent = text;
-      statusEl.className = "status " + type;
-      statusEl.style.display = text ? "block" : "none";
-      if (type === "ok" && text) setTimeout(() => setStatus(""), 1500);
+    function setStatus(el, text, type = "ok") {
+      el.textContent = text;
+      el.className = "status " + type;
+      el.style.display = text ? "block" : "none";
+      if (type === "ok" && text) setTimeout(() => setStatus(el, ""), 1500);
     }
 
+    // === CODE functions ===
     function load() {
-      setStatus("LOADING", "loading");
+      setStatus(statusEl, "LOADING", "loading");
       textarea.disabled = true;
-      fetch(URL)
+      fetch(CODE_URL)
         .then(r => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text(); // ⚠️ не .json(), потому что корень — строка
+          return r.text(); // raw response string
         })
         .then(text => {
-          // Firebase оборачивает строку в JSON-кавычки: "\"code\\nmore\""
-          // Поэтому если пришёл JSON-строка — распарсим
           try {
             const decoded = JSON.parse(text);
             textarea.value = typeof decoded === "string" ? decoded : text;
           } catch (e) {
             textarea.value = text;
           }
-          setStatus("OK", "ok");
+          setStatus(statusEl, "OK", "ok");
         })
         .catch(err => {
           textarea.value = "";
-          setStatus(`ERR: ${err.message || err}`, "error");
+          setStatus(statusEl, `ERR: ${err.message || err}`, "error");
         })
-        .finally(() => {
-          textarea.disabled = false;
-          textarea.focus();
-        });
+        .finally(() => { textarea.disabled = false; textarea.focus(); });
     }
 
     function save() {
       const content = textarea.value;
-      if (!content.trim()) return setStatus("EMPTY", "error");
+      if (!content.trim()) return setStatus(statusEl, "EMPTY", "error");
 
-      setStatus("SAVING", "loading");
+      setStatus(statusEl, "SAVING", "loading");
       textarea.disabled = true;
 
-      // 🔥 ВАЖНО: в корень можно писать ТОЛЬКО строку → оборачиваем в JSON.stringify
-      fetch(URL, {
+      fetch(CODE_URL, {
         method: "PUT",
-        body: JSON.stringify(content), // ← это делает строку валидным JSON: "\"print(...)\""
+        body: JSON.stringify(content),
         headers: { "Content-Type": "application/json" }
       })
         .then(r => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           return r.text();
         })
-        .then(() => setStatus("OK", "ok"))
-        .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
-        .finally(() => {
-          textarea.disabled = false;
-          textarea.focus();
-        });
+        .then(() => setStatus(statusEl, "OK", "ok"))
+        .catch(err => setStatus(statusEl, `ERR: ${err.message || err}`, "error"))
+        .finally(() => { textarea.disabled = false; textarea.focus(); });
     }
 
     function copy() {
       const text = textarea.value;
-      if (!text) return setStatus("EMPTY", "error");
+      if (!text) return setStatus(statusEl, "EMPTY", "error");
       if (navigator.clipboard) {
         navigator.clipboard.writeText(text)
-          .then(() => setStatus("COPIED", "ok"))
-          .catch(() => fallbackCopy());
+          .then(() => setStatus(statusEl, "COPIED", "ok"))
+          .catch(() => fallbackCopy(textarea));
       } else {
-        fallbackCopy();
+        fallbackCopy(textarea);
       }
     }
 
-    function fallbackCopy() {
-      textarea.select();
+    // === NICKS functions ===
+    function loadNicks() {
+      setStatus(statusNicksEl, "LOADING", "loading");
+      nicksInput.disabled = true;
+      fetch(NICKS_URL)
+        .then(r => {
+          if (!r.ok) {
+            if (r.status === 404) {
+              nicksInput.value = "";
+              setStatus(statusNicksEl, "NO NICKS", "ok");
+            } else {
+              throw new Error(`HTTP ${r.status}`);
+            }
+          } else {
+            return r.json(); // возвращает строку или null
+          }
+        })
+        .then(data => {
+          if (typeof data === "string") {
+            nicksInput.value = data;
+            setStatus(statusNicksEl, "OK", "ok");
+          } else if (data === null) {
+            nicksInput.value = "";
+            setStatus(statusNicksEl, "NO NICKS", "ok");
+          } else {
+            nicksInput.value = "";
+            setStatus(statusNicksEl, "UNEXPECTED DATA", "error");
+          }
+        })
+        .catch(err => {
+          nicksInput.value = "";
+          setStatus(statusNicksEl, `ERR: ${err.message || err}`, "error");
+        })
+        .finally(() => { nicksInput.disabled = false; nicksInput.focus(); });
+    }
+
+    function saveNicks() {
+      const content = nicksInput.value.trim();
+      if (!content) return setStatus(statusNicksEl, "EMPTY", "error");
+
+      setStatus(statusNicksEl, "SAVING", "loading");
+      nicksInput.disabled = true;
+
+      fetch(NICKS_URL, {
+        method: "PUT",
+        body: JSON.stringify(content),
+        headers: { "Content-Type": "application/json" }
+      })
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.text();
+        })
+        .then(() => setStatus(statusNicksEl, "OK", "ok"))
+        .catch(err => setStatus(statusNicksEl, `ERR: ${err.message || err}`, "error"))
+        .finally(() => { nicksInput.disabled = false; nicksInput.focus(); });
+    }
+
+    function copyNicks() {
+      const text = nicksInput.value;
+      if (!text) return setStatus(statusNicksEl, "EMPTY", "error");
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text)
+          .then(() => setStatus(statusNicksEl, "COPIED", "ok"))
+          .catch(() => fallbackCopy(nicksInput));
+      } else {
+        fallbackCopy(nicksInput);
+      }
+    }
+
+    function clearNicks() {
+      if (nicksInput.value && !confirm("Clear nicks?")) return;
+      nicksInput.value = "";
+      setStatus(statusNicksEl, "CLEARED", "ok");
+    }
+
+    function fallbackCopy(el) {
+      el.select();
+      el.setSelectionRange(0, 99999); // for mobile
       document.execCommand("copy");
-      setStatus("COPIED", "ok");
+      // status set outside
     }
 
     function clearAll() {
       if (textarea.value && !confirm("Clear code?")) return;
       textarea.value = "";
-      setStatus("CLEARED", "ok");
+      setStatus(statusEl, "CLEARED", "ok");
     }
 
     document.addEventListener("keydown", e => {
@@ -189,8 +288,9 @@
       if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
     });
 
-    // При открытии — сразу грузим
+    // Initialize
     load();
+    loadNicks();
   </script>
 </body>
 </html>
