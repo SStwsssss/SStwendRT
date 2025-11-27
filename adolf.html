@@ -1,88 +1,336 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>SStwendRT</title>
+  <title>SStwendRT — Lua Database</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #000000;
+      --border: #cccccc;
+      --hover: #f0f0f0;
+      --active: #e0e0e0;
+      --status-ok: #404040;
+      --status-err: #666666;
+      --shadow: rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      padding: 0;
-      height: 100vh;
+      padding: 16px;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: center;
-      background: #f5f5f5;
-      font-family: sans-serif;
+      align-items: flex-start;
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.5;
     }
+
     .container {
+      width: 100%;
+      max-width: 720px;
       background: white;
-      padding: 24px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      max-width: 600px;
-      width: 100%;
-      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      box-shadow: 0 2px 6px var(--shadow);
     }
-    textarea {
-      width: 100%;
-      box-sizing: border-box;
-      font-family: monospace;
-      font-size: 14px;
+
+    h1 {
+      margin: 0 0 16px;
+      font-weight: 600;
+      font-size: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
     }
-    button {
-      margin-top: 12px;
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+
+    .controls button {
       padding: 8px 16px;
-      font-size: 16px;
+      font-size: 14px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 4px;
       cursor: pointer;
+      transition: background 0.15s;
+      min-width: 80px;
     }
-    #status {
-      margin-top: 8px;
-      min-height: 1.2em;
-      color: #2e7d32;
-      font-weight: bold;
+
+    .controls button:hover {
+      background: var(--hover);
+    }
+
+    .controls button:active {
+      background: var(--active);
+    }
+
+    .controls button:focus {
+      outline: 2px solid #888;
+      outline-offset: 2px;
+    }
+
+    .status {
+      min-height: 1.4em;
+      margin: 8px 0;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .status.ok {
+      color: var(--status-ok);
+      background: #f8f8f8;
+    }
+
+    .status.err {
+      color: var(--status-err);
+      background: #f8f8f8;
+    }
+
+    .status.loading {
+      color: #555;
+      background: #f8f8f8;
+    }
+
+    textarea#code {
+      width: 100%;
+      height: 360px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.45;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: white;
+      color: var(--fg);
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    textarea#code:focus {
+      outline: 2px solid #888;
+      outline-offset: -2px;
+    }
+
+    /* Простая подсветка синтаксиса (на лету) — только ключевые слова Lua и строки */
+    .highlight {
+      white-space: pre;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+    }
+
+    .kw { color: #000; font-weight: bold; }         /* ключевые слова */
+    .str { color: #444; }                            /* строки */
+    .cmt { color: #777; font-style: italic; }        /* комментарии */
+    .num { color: #444; }                            /* числа */
+    .fn { color: #222; }                             /* имена функций/переменных */
+
+    @media (max-width: 560px) {
+      .controls { flex-direction: column; }
+      .controls button { width: 100%; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h3>SStwendRT Data Base Code:</h3>
-    <textarea id="code" rows="10" cols="60" placeholder="Введите Lua-код">Load...</textarea><br>
-    <button onclick="save()">Save</button>
-    <p id="status"></p>
+    <h1>SStwendRT — Lua Database</h1>
+
+    <div class="controls">
+      <button onclick="save()" title="Сохранить в Firebase (PUT)">
+        💾 Сохранить
+      </button>
+      <button onclick="load()" title="Принудительно перезагрузить из Firebase">
+        🔄 Загрузить
+      </button>
+      <button onclick="copy()" title="Копировать содержимое в буфер">
+        📋 Копировать
+      </button>
+      <button onclick="clearAll()" title="Очистить поле (не удаляет из Firebase!)">
+        🗑️ Очистить
+      </button>
+    </div>
+
+    <div id="status" class="status" style="display:none;"></div>
+
+    <textarea id="code" spellcheck="false" placeholder="Введите Lua-код. Поддерживаются: комментарии (--), строки, числа, ключевые слова.">Загрузка...</textarea>
   </div>
 
   <script>
     const url = "https://code-e0de9-default-rtdb.firebaseio.com/code.json";
     const textarea = document.getElementById("code");
-    const status = document.getElementById("status");
+    const statusEl = document.getElementById("status");
 
-    fetch(url)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        textarea.value = typeof data === "string" ? data : "";
-        status.innerText = data ? "" : "";
-      })
-      .catch(() => {
-        textarea.value = "";
-        status.innerText = "";
-      });
+    // Простой highlighter для Lua (client-side, без зависимостей)
+    function highlightLua(code) {
+      // Экранируем HTML
+      code = code
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // Комментарии (--) до конца строки
+      code = code.replace(/(--[^\n]*)/g, '<span class="cmt">$1</span>');
+
+      // Строки: "..." и '...'
+      code = code.replace(/("([^"\\]|\\.)*")|('([^'\\]|\\.)*')/g, '<span class="str">$1$3</span>');
+
+      // Числа (целые и float)
+      code = code.replace(/\b(\d+\.?\d*|\.\d+)\b/g, '<span class="num">$1</span>');
+
+      // Ключевые слова Lua
+      const keywords = [
+        "and", "break", "do", "else", "elseif", "end", "false", "for", "function",
+        "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true",
+        "until", "while"
+      ];
+      const kwRegex = new RegExp(`\\b(${keywords.join("|")})\\b`, "g");
+      code = code.replace(kwRegex, '<span class="kw">$1</span>');
+
+      // Простая эвристика для имён функций/переменных после `function`
+      code = code.replace(/(function)\s+([a-zA-Z_]\w*)/g, '$1 <span class="fn">$2</span>');
+
+      return code;
+    }
+
+    function updateHighlight() {
+      const code = textarea.value;
+      // Простая замена — можно улучшить по желанию
+      // Сейчас делаем «живую» подсветку при фокусе/вводе (опционально — для производительности отключим на мобильных или при >5к символов)
+      if (code.length < 3000) {
+        // Применяем подсветку (заменяем текст на span’ы — но только визуально, значение textarea остаётся чистым)
+        // Для простоты — оставим пока без live-хайлайта. Но оставим функцию, если захотите добавить <pre id="preview"> позже.
+      }
+    }
+
+    textarea.addEventListener("input", () => {
+      // updateHighlight(); // ← раскомментируйте для live-highlight (может тормозить на больших скриптах)
+    });
+
+    function setStatus(text, type = "ok") {
+      statusEl.textContent = text;
+      statusEl.className = "status " + type;
+      statusEl.style.display = text ? "block" : "none";
+    }
+
+    function load() {
+      setStatus("Загрузка...", "loading");
+      textarea.disabled = true;
+
+      fetch(url)
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          textarea.value = typeof data === "string" ? data : "";
+          setStatus("✅ Загружено", "ok");
+          setTimeout(() => setStatus(""), 2000);
+        })
+        .catch(err => {
+          console.error(err);
+          textarea.value = "-- Ошибка загрузки\n";
+          setStatus(`❗ Ошибка: ${err.message || "неизвестно"}`, "err");
+        })
+        .finally(() => {
+          textarea.disabled = false;
+          textarea.focus();
+        });
+    }
 
     function save() {
-      const content = textarea.value;
-      status.innerText = "";
+      const content = textarea.value.trim();
+      if (content === "") {
+        setStatus("⚠ Поле пустое", "err");
+        setTimeout(() => setStatus(""), 2000);
+        return;
+      }
+
+      setStatus("Сохранение...", "loading");
+      textarea.disabled = true;
+
       fetch(url, {
         method: "PUT",
         body: JSON.stringify(content),
         headers: { "Content-Type": "application/json" }
       })
       .then(r => {
-        status.innerText = r.ok ? "" : "" + r.status;
-        if (r.ok) setTimeout(() => status.innerText = "", 1500);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r;
       })
-      .catch(() => {
-        status.innerText = "";
+      .then(() => {
+        setStatus("✅ Сохранено", "ok");
+        setTimeout(() => setStatus(""), 1500);
+      })
+      .catch(err => {
+        console.error(err);
+        setStatus(`❗ Ошибка сохранения: ${err.message || "сеть?"}`, "err");
+      })
+      .finally(() => {
+        textarea.disabled = false;
+        textarea.focus();
       });
     }
+
+    function copy() {
+      const text = textarea.value;
+      if (!text) {
+        setStatus("⚠ Нечего копировать", "err");
+        setTimeout(() => setStatus(""), 1500);
+        return;
+      }
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          setStatus("📋 Скопировано!", "ok");
+          setTimeout(() => setStatus(""), 1500);
+        })
+        .catch(() => {
+          // fallback
+          textarea.select();
+          document.execCommand("copy");
+          setStatus("📋 Скопировано (fallback)", "ok");
+          setTimeout(() => setStatus(""), 1500);
+        });
+    }
+
+    function clearAll() {
+      if (textarea.value.trim() && !confirm("Очистить поле? Данные в Firebase не изменятся.")) return;
+      textarea.value = "";
+      textarea.focus();
+      setStatus("Очищено локально", "ok");
+      setTimeout(() => setStatus(""), 1500);
+    }
+
+    // Горячие клавиши
+    document.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        save();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "r") {
+        e.preventDefault();
+        load();
+      }
+    });
+
+    // Инициализация
+    load();
   </script>
 </body>
 </html>
