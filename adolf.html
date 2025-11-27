@@ -1,296 +1,236 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <title>SStwendRT Checker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Information Data Base</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      background: #121212;
-      color: #e0e0e0;
-      font-family: 'Courier New', monospace;
-      font-size: 14px;
-      line-height: 1.4;
-      padding: 20px;
+      font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background-color: #121212; /* Almost black */
+      color: #e0e0e0; /* Soft white for readability */
+      padding: 30px;
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
     }
+
     .container {
-      width: 100%;
-      max-width: 720px;
-      background: #1e1e1e;
-      border: 1px solid #444;
-      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
     }
-    h1 {
-      font-weight: normal;
-      font-size: 18px;
-      margin-bottom: 16px;
-      border-bottom: 1px solid #444;
-      padding-bottom: 6px;
-    }
-    .section {
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 24px;
     }
-    .section h2 {
+
+    #counter {
+      background: #000;
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 20px;
       font-size: 16px;
-      margin-bottom: 10px;
-      opacity: 0.8;
+      font-weight: 600;
+      border: 1px solid #333;
     }
-    .controls {
+
+    h1 {
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .input-group {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
     }
-    .controls button {
-      padding: 8px 14px;
-      background: #2d2d2d;
-      color: #e0e0e0;
-      border: 1px solid #444;
-      font: inherit;
-      font-size: 13px;
-      cursor: pointer;
+
+    #userInput {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 2px solid #444;
+      border-radius: 8px;
       outline: none;
-      transition: background 0.15s;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      caret-color: #fff;
     }
-    .controls button:hover { background: #3a3a3a; }
-    .controls button:active { background: #444; }
-    .status {
-      min-height: 1.2em;
-      margin: 6px 0;
-      font-size: 13px;
-      display: none;
+
+    #userInput:focus {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
     }
-    .status.ok { color: #b0c4b0; }
-    .status.error { color: #c4b0b0; }
-    .status.loading { color: #b0b0b0; }
-    textarea, input[type="text"] {
-      width: 100%;
-      font: 13px 'Courier New', monospace;
-      resize: vertical;
-      border: 1px solid #444;
-      padding: 10px;
+
+    #addBtn {
+      background: #000;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    #addBtn:hover {
+      background: #222;
+      border-color: #555;
+    }
+
+    #addBtn:active {
+      background: #000;
+      transform: scale(0.98);
+    }
+
+    .notes-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .note-item {
       background: #1a1a1a;
-      color: #e6e6e6;
-      white-space: pre;
-      tab-size: 2;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeIn 0.3s ease-out;
+      word-break: break-word;
     }
-    textarea {
-      height: 400px;
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    input[type="text"] {
-      height: 40px;
+
+    .note-text {
+      flex: 1;
+      font-size: 16px;
+      color: #e0e0e0;
+      padding-right: 12px;
+      line-height: 1.5;
     }
-    textarea:focus, input[type="text"]:focus {
-      outline: 2px solid #555;
-      outline-offset: -2px;
+
+    .note-delete {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #aaa;
+      font-size: 18px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .note-delete:hover {
+      background: #3a3a3a;
+      color: #fff;
+      border-color: #666;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #777;
+      padding: 30px;
+      font-style: italic;
+      border: 1px dashed #333;
+      border-radius: 8px;
+      background: #161616;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Code Section -->
-    <div class="section">
-      <h2>Code:</h2>
-      <div class="controls">
-        <button onclick="save()">SEND</button>
-        <button onclick="load()">LOAD</button>
-        <button onclick="copy()">COPY</button>
-        <button onclick="clearAll()">CLEAR</button>
-      </div>
-      <div id="status" class="status"></div>
-      <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
+    <div class="header">
+      <span id="counter">0</span>
+      <h1>Information:</h1>
     </div>
-
-    <!-- Nicks Section -->
-    <div class="section">
-      <h2>Nicks (comma-separated):</h2>
-      <div class="controls">
-        <button onclick="saveNicks()">SEND NICKS</button>
-        <button onclick="loadNicks()">LOAD NICKS</button>
-        <button onclick="copyNicks()">COPY NICKS</button>
-        <button onclick="clearNicks()">CLEAR NICKS</button>
-      </div>
-      <div id="statusNicks" class="status"></div>
-      <input type="text" id="nicks" spellcheck="false" placeholder="plr1,plr2,plr3">
+    <div class="input-group">
+      <input type="text" id="userInput" placeholder=". . .">
+      <button id="addBtn">Add</button>
     </div>
+    <ul id="notesList" class="notes-list">
+    </ul>
   </div>
-
   <script>
-    const CODE_URL = "https://wadawsd-d8bc3-default-rtdb.firebaseio.com/.json";
-    const NICKS_URL = "https://awewqweqwe-default-rtdb.firebaseio.com/nicks.json";
+    const input = document.getElementById('userInput');
+    const addBtn = document.getElementById('addBtn');
+    const notesList = document.getElementById('notesList');
+    const counter = document.getElementById('counter');
+    let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
 
-    const textarea = document.getElementById("code");
-    const nicksInput = document.getElementById("nicks");
-    const statusEl = document.getElementById("status");
-    const statusNicksEl = document.getElementById("statusNicks");
-
-    function setStatus(el, text, type = "ok") {
-      el.textContent = text;
-      el.className = "status " + type;
-      el.style.display = text ? "block" : "none";
-      if (type === "ok" && text) setTimeout(() => setStatus(el, ""), 1500);
+    function updateCounter() {
+      counter.textContent = notes.length;
     }
 
-    // === CODE functions ===
-    function load() {
-      setStatus(statusEl, "LOADING", "loading");
-      textarea.disabled = true;
-      fetch(CODE_URL)
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text(); // raw response string
-        })
-        .then(text => {
-          try {
-            const decoded = JSON.parse(text);
-            textarea.value = typeof decoded === "string" ? decoded : text;
-          } catch (e) {
-            textarea.value = text;
-          }
-          setStatus(statusEl, "OK", "ok");
-        })
-        .catch(err => {
-          textarea.value = "";
-          setStatus(statusEl, `ERR: ${err.message || err}`, "error");
-        })
-        .finally(() => { textarea.disabled = false; textarea.focus(); });
+    function addNote() {
+      const text = input.value.trim();
+      if (text === '') return;
+      notes.push(text);
+      localStorage.setItem('savedNotes', JSON.stringify(notes));
+      input.value = '';
+      input.focus();
+      renderNotes();
+      updateCounter();
     }
 
-    function save() {
-      const content = textarea.value;
-      if (!content.trim()) return setStatus(statusEl, "EMPTY", "error");
-
-      setStatus(statusEl, "SAVING", "loading");
-      textarea.disabled = true;
-
-      fetch(CODE_URL, {
-        method: "PUT",
-        body: JSON.stringify(content),
-        headers: { "Content-Type": "application/json" }
-      })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text();
-        })
-        .then(() => setStatus(statusEl, "OK", "ok"))
-        .catch(err => setStatus(statusEl, `ERR: ${err.message || err}`, "error"))
-        .finally(() => { textarea.disabled = false; textarea.focus(); });
-    }
-
-    function copy() {
-      const text = textarea.value;
-      if (!text) return setStatus(statusEl, "EMPTY", "error");
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text)
-          .then(() => setStatus(statusEl, "COPIED", "ok"))
-          .catch(() => fallbackCopy(textarea));
-      } else {
-        fallbackCopy(textarea);
+    function renderNotes() {
+      if (notes.length === 0) {
+        notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
+        return;
       }
+      notesList.innerHTML = '';
+      notes.forEach((note, index) => {
+        const li = document.createElement('li');
+        li.className = 'note-item';
+        // Escape HTML for safety
+        const safeText = note
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+        li.innerHTML = `
+          <span class="note-text">${safeText}</span>
+          <button class="note-delete" data-index="${index}" aria-label="Delete note">🗑️</button>
+        `;
+        notesList.appendChild(li);
+      });
+      document.querySelectorAll('.note-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index, 10);
+          notes.splice(index, 1);
+          localStorage.setItem('savedNotes', JSON.stringify(notes));
+          renderNotes();
+          updateCounter();
+        });
+      });
     }
 
-    // === NICKS functions ===
-    function loadNicks() {
-      setStatus(statusNicksEl, "LOADING", "loading");
-      nicksInput.disabled = true;
-      fetch(NICKS_URL)
-        .then(r => {
-          if (!r.ok) {
-            if (r.status === 404) {
-              nicksInput.value = "";
-              setStatus(statusNicksEl, "NO NICKS", "ok");
-            } else {
-              throw new Error(`HTTP ${r.status}`);
-            }
-          } else {
-            return r.json(); // возвращает строку или null
-          }
-        })
-        .then(data => {
-          if (typeof data === "string") {
-            nicksInput.value = data;
-            setStatus(statusNicksEl, "OK", "ok");
-          } else if (data === null) {
-            nicksInput.value = "";
-            setStatus(statusNicksEl, "NO NICKS", "ok");
-          } else {
-            nicksInput.value = "";
-            setStatus(statusNicksEl, "UNEXPECTED DATA", "error");
-          }
-        })
-        .catch(err => {
-          nicksInput.value = "";
-          setStatus(statusNicksEl, `ERR: ${err.message || err}`, "error");
-        })
-        .finally(() => { nicksInput.disabled = false; nicksInput.focus(); });
-    }
-
-    function saveNicks() {
-      const content = nicksInput.value.trim();
-      if (!content) return setStatus(statusNicksEl, "EMPTY", "error");
-
-      setStatus(statusNicksEl, "SAVING", "loading");
-      nicksInput.disabled = true;
-
-      fetch(NICKS_URL, {
-        method: "PUT",
-        body: JSON.stringify(content),
-        headers: { "Content-Type": "application/json" }
-      })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text();
-        })
-        .then(() => setStatus(statusNicksEl, "OK", "ok"))
-        .catch(err => setStatus(statusNicksEl, `ERR: ${err.message || err}`, "error"))
-        .finally(() => { nicksInput.disabled = false; nicksInput.focus(); });
-    }
-
-    function copyNicks() {
-      const text = nicksInput.value;
-      if (!text) return setStatus(statusNicksEl, "EMPTY", "error");
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text)
-          .then(() => setStatus(statusNicksEl, "COPIED", "ok"))
-          .catch(() => fallbackCopy(nicksInput));
-      } else {
-        fallbackCopy(nicksInput);
-      }
-    }
-
-    function clearNicks() {
-      if (nicksInput.value && !confirm("Clear nicks?")) return;
-      nicksInput.value = "";
-      setStatus(statusNicksEl, "CLEARED", "ok");
-    }
-
-    function fallbackCopy(el) {
-      el.select();
-      el.setSelectionRange(0, 99999); // for mobile
-      document.execCommand("copy");
-      // status set outside
-    }
-
-    function clearAll() {
-      if (textarea.value && !confirm("Clear code?")) return;
-      textarea.value = "";
-      setStatus(statusEl, "CLEARED", "ok");
-    }
-
-    document.addEventListener("keydown", e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); load(); }
+    addBtn.addEventListener('click', addNote);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addNote();
     });
 
-    // Initialize
-    load();
-    loadNicks();
+    renderNotes();
+    updateCounter();
   </script>
 </body>
 </html>
