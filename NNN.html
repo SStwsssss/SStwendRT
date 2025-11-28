@@ -137,144 +137,156 @@
   </div>
 
   <script>
-    // ✅ Updated URLs per your request
-    const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
-    const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
+  // ✅ Updated URLs per your request
+  const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
+  const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
 
-    const codeArea = document.getElementById("code");
-    const nicksArea = document.getElementById("nicks");
-    const statusEl = document.getElementById("status");
-    let currentTab = "code";
+  const LOCAL_CODE_KEY = "sstwendrt_code";
+  const LOCAL_NICKS_KEY = "sstwendrt_nicks";
 
-    document.querySelectorAll(".tab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        const target = tab.dataset.tab;
-        if (target === currentTab) return;
+  const codeArea = document.getElementById("code");
+  const nicksArea = document.getElementById("nicks");
+  const statusEl = document.getElementById("status");
+  let currentTab = "code";
 
-        document.querySelector(`.tab[data-tab="${currentTab}"]`).classList.remove("active");
-        tab.classList.add("active");
-        currentTab = target;
+  // 🔁 Restore from localStorage on init (before loading from Firebase)
+  codeArea.value = localStorage.getItem(LOCAL_CODE_KEY) || "";
+  nicksArea.value = localStorage.getItem(LOCAL_NICKS_KEY) || "";
 
-        codeArea.classList.toggle("hidden", currentTab !== "code");
-        nicksArea.classList.toggle("hidden", currentTab !== "nicks");
-      });
+  // 📥 Save on input
+  codeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CODE_KEY, codeArea.value));
+  nicksArea.addEventListener("input", () => localStorage.setItem(LOCAL_NICKS_KEY, nicksArea.value));
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      if (target === currentTab) return;
+
+      document.querySelector(`.tab[data-tab="${currentTab}"]`).classList.remove("active");
+      tab.classList.add("active");
+      currentTab = target;
+
+      codeArea.classList.toggle("hidden", currentTab !== "code");
+      nicksArea.classList.toggle("hidden", currentTab !== "nicks");
     });
+  });
 
-    function setStatus(text, type = "ok") {
-      statusEl.textContent = text;
-      statusEl.className = "status " + type;
-      statusEl.style.display = text ? "block" : "none";
-      if (type === "ok" && text) setTimeout(() => {
-        if (statusEl.textContent === text) setStatus("");
-      }, 1500);
-    }
+  function setStatus(text, type = "ok") {
+    statusEl.textContent = text;
+    statusEl.className = "status " + type;
+    statusEl.style.display = text ? "block" : "none";
+    if (type === "ok" && text) setTimeout(() => {
+      if (statusEl.textContent === text) setStatus("");
+    }, 1500);
+  }
 
-    function getCurrentArea() {
-      return currentTab === "code" ? codeArea : nicksArea;
-    }
+  function getCurrentArea() {
+    return currentTab === "code" ? codeArea : nicksArea;
+  }
 
-    function getCurrentUrl() {
-      return currentTab === "code" ? CODE_URL : NICKS_URL;
-    }
+  function getCurrentUrl() {
+    return currentTab === "code" ? CODE_URL : NICKS_URL;
+  }
 
-    function sendCurrent() {
-      const area = getCurrentArea();
-      const content = area.value.trim();
-      if (!content) return setStatus("EMPTY", "error");
+  function sendCurrent() {
+    const area = getCurrentArea();
+    const content = area.value.trim();
+    if (!content) return setStatus("EMPTY", "error");
 
-      const url = getCurrentUrl();
-      setStatus("SAVING", "loading");
-      area.disabled = true;
+    const url = getCurrentUrl();
+    setStatus("SAVING", "loading");
+    area.disabled = true;
 
-      const payload = JSON.stringify(content);
-      fetch(url, {
-        method: "PUT",
-        body: payload,
-        headers: { "Content-Type": "application/json" }
+    const payload = JSON.stringify(content);
+    fetch(url, {
+      method: "PUT",
+      body: payload,
+      headers: { "Content-Type": "application/json" }
+    })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
       })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.text();
-        })
-        .then(() => setStatus("OK", "ok"))
-        .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
-        .finally(() => { area.disabled = false; area.focus(); });
-    }
+      .then(() => setStatus("OK", "ok"))
+      .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+      .finally(() => { area.disabled = false; area.focus(); });
+  }
 
-    function loadCurrent() {
-      const area = getCurrentArea();
-      const url = getCurrentUrl();
-      setStatus("LOADING", "loading");
-      area.disabled = true;
+  function loadCurrent() {
+    const area = getCurrentArea();
+    const url = getCurrentUrl();
+    setStatus("LOADING", "loading");
+    area.disabled = true;
 
-      fetch(url)
-        .then(r => {
-          if (!r.ok) {
-            if (r.status === 404 && currentTab === "nicks") {
-              area.value = "";
-              setStatus("NO NICKS", "ok");
-              return;
-            }
-            throw new Error(`HTTP ${r.status}`);
+    fetch(url)
+      .then(r => {
+        if (!r.ok) {
+          if (r.status === 404 && currentTab === "nicks") {
+            // ✅ Если Firebase пуст — оставляем localStorage-значение (уже загружено выше)
+            setStatus("NO NICKS", "ok");
+            return;
           }
-          return r.text();
-        })
-        .then(text => {
-          if (currentTab === "nicks") {
-            try {
-              const data = JSON.parse(text);
-              area.value = typeof data === "string" ? data : "";
-            } catch (e) {
-              area.value = text;
-            }
-          } else {
-            try {
-              const decoded = JSON.parse(text);
-              area.value = typeof decoded === "string" ? decoded : text;
-            } catch (e) {
-              area.value = text;
-            }
-          }
-          setStatus("OK", "ok");
-        })
-        .catch(err => {
-          area.value = "";
-          setStatus(`ERR: ${err.message || err}`, "error");
-        })
-        .finally(() => { area.disabled = false; area.focus(); });
+          throw new Error(`HTTP ${r.status}`);
+        }
+        return r.text();
+      })
+      .then(text => {
+        if (!text || text === "null") return; // Firebase возвращает `"null"` как строку при пустом значении
+        let value = "";
+        try {
+          const data = JSON.parse(text);
+          value = typeof data === "string" ? data : "";
+        } catch (e) {
+          value = text;
+        }
+        // ✅ Только если успешно загружено из Firebase — перезаписываем localStorage-версию
+        area.value = value;
+        if (currentTab === "code") localStorage.setItem(LOCAL_CODE_KEY, value);
+        else localStorage.setItem(LOCAL_NICKS_KEY, value);
+        setStatus("OK", "ok");
+      })
+      .catch(err => {
+        // ❗ При ошибке — оставляем текущее значение (из localStorage или предыдущего ввода)
+        setStatus(`ERR: ${err.message || err}`, "error");
+      })
+      .finally(() => { area.disabled = false; area.focus(); });
+  }
+
+  function copyCurrent() {
+    const text = getCurrentArea().value;
+    if (!text) return setStatus("EMPTY", "error");
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text)
+        .then(() => setStatus("COPIED", "ok"))
+        .catch(() => fallbackCopy(getCurrentArea()));
+    } else {
+      fallbackCopy(getCurrentArea());
     }
+  }
 
-    function copyCurrent() {
-      const text = getCurrentArea().value;
-      if (!text) return setStatus("EMPTY", "error");
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text)
-          .then(() => setStatus("COPIED", "ok"))
-          .catch(() => fallbackCopy(getCurrentArea()));
-      } else {
-        fallbackCopy(getCurrentArea());
-      }
-    }
+  function clearCurrent() {
+    const area = getCurrentArea();
+    if (area.value && !confirm(`Clear ${currentTab === "code" ? "code" : "nicks"}?`)) return;
+    area.value = "";
+    // ✅ Также очищаем localStorage
+    if (currentTab === "code") localStorage.removeItem(LOCAL_CODE_KEY);
+    else localStorage.removeItem(LOCAL_NICKS_KEY);
+    setStatus("CLEARED", "ok");
+  }
 
-    function clearCurrent() {
-      const area = getCurrentArea();
-      if (area.value && !confirm(`Clear ${currentTab === "code" ? "code" : "nicks"}?`)) return;
-      area.value = "";
-      setStatus("CLEARED", "ok");
-    }
+  function fallbackCopy(el) {
+    el.select();
+    el.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+  }
 
-    function fallbackCopy(el) {
-      el.select();
-      el.setSelectionRange(0, 99999);
-      document.execCommand("copy");
-    }
+  document.addEventListener("keydown", e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); sendCurrent(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); loadCurrent(); }
+  });
 
-    document.addEventListener("keydown", e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); sendCurrent(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); loadCurrent(); }
-    });
-
-    loadCurrent();
-  </script>
+  // ⏳ Load from Firebase AFTER restoring from localStorage
+  loadCurrent();
+</script>
 </body>
 </html>
