@@ -90,9 +90,8 @@
       position: relative;
       width: 100%;
     }
-    textarea {
+    textarea, input {
       width: 100%;
-      height: 400px;
       font: 13px 'Courier New', monospace;
       resize: vertical;
       border: 1px solid #444;
@@ -102,11 +101,18 @@
       white-space: pre;
       tab-size: 2;
     }
-    textarea:focus {
+    textarea {
+      height: 400px;
+    }
+    input {
+      height: 36px;
+      margin-top: 6px;
+    }
+    textarea:focus, input:focus {
       outline: 2px solid #555;
       outline-offset: -2px;
     }
-    textarea.hidden {
+    textarea.hidden, input.hidden {
       display: none;
     }
   </style>
@@ -117,6 +123,7 @@
       <div class="section-header">
         <div class="tab active" data-tab="code">Code</div>
         <div class="tab" data-tab="nicks">Players</div>
+        <div class="tab" data-tab="checker">Checker</div>
         <span style="flex: 1;"></span>
       </div>
 
@@ -132,30 +139,43 @@
       <div class="content-area">
         <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
         <textarea id="nicks" class="hidden" spellcheck="false" placeholder="plr1,plr2,plr3 — one per line or comma-separated"></textarea>
+        <div id="checker" class="hidden" style="display:flex;flex-direction:column;">
+          <textarea id="checker-code" spellcheck="false" placeholder="// Checker Lua code here..."></textarea>
+          <input type="text" id="checker-name" placeholder="Enter checker name (optional)">
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-  // ✅ Updated URLs per your request
+  // ✅ URLs
   const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
   const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
+  const CHECKER_URL = "https://checker-d6b5d-default-rtdb.firebaseio.com/"; // базовая ссылка
 
   const LOCAL_CODE_KEY = "sstwendrt_code";
   const LOCAL_NICKS_KEY = "sstwendrt_nicks";
+  const LOCAL_CHECKER_CODE_KEY = "sstwendrt_checker_code";
+  const LOCAL_CHECKER_NAME_KEY = "sstwendrt_checker_name";
 
   const codeArea = document.getElementById("code");
   const nicksArea = document.getElementById("nicks");
+  const checkerCodeArea = document.getElementById("checker-code");
+  const checkerNameInput = document.getElementById("checker-name");
   const statusEl = document.getElementById("status");
   let currentTab = "code";
 
-  // 🔁 Restore from localStorage on init (before loading from Firebase)
+  // 🔁 Restore from localStorage on init
   codeArea.value = localStorage.getItem(LOCAL_CODE_KEY) || "";
   nicksArea.value = localStorage.getItem(LOCAL_NICKS_KEY) || "";
+  checkerCodeArea.value = localStorage.getItem(LOCAL_CHECKER_CODE_KEY) || "";
+  checkerNameInput.value = localStorage.getItem(LOCAL_CHECKER_NAME_KEY) || "";
 
   // 📥 Save on input
   codeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CODE_KEY, codeArea.value));
   nicksArea.addEventListener("input", () => localStorage.setItem(LOCAL_NICKS_KEY, nicksArea.value));
+  checkerCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_CODE_KEY, checkerCodeArea.value));
+  checkerNameInput.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_NAME_KEY, checkerNameInput.value));
 
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
@@ -168,6 +188,7 @@
 
       codeArea.classList.toggle("hidden", currentTab !== "code");
       nicksArea.classList.toggle("hidden", currentTab !== "nicks");
+      document.getElementById("checker").classList.toggle("hidden", currentTab !== "checker");
     });
   });
 
@@ -180,58 +201,86 @@
     }, 1500);
   }
 
-  function getCurrentArea() {
-    return currentTab === "code" ? codeArea : nicksArea;
+  function getCurrentData() {
+    if (currentTab === "code") return { value: codeArea.value.trim(), key: "code" };
+    if (currentTab === "nicks") return { value: nicksArea.value.trim(), key: "nicks" };
+    if (currentTab === "checker") return {
+      value: checkerCodeArea.value.trim(),
+      name: checkerNameInput.value.trim() || "main",
+      key: "checker"
+    };
+    return null;
   }
 
-  function getCurrentUrl() {
-    return currentTab === "code" ? CODE_URL : NICKS_URL;
+  function getCurrentUrlAndPayload() {
+    const data = getCurrentData();
+    if (!data?.value) return null;
+
+    if (data.key === "code") {
+      return { url: CODE_URL, payload: JSON.stringify(data.value) };
+    } else if (data.key === "nicks") {
+      return { url: NICKS_URL, payload: JSON.stringify(data.value) };
+    } else if (data.key === "checker") {
+      // Отправляем по пути `/checkers/{name}.json`
+      const url = `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`;
+      return { url, payload: JSON.stringify(data.value) };
+    }
+    return null;
   }
 
   function sendCurrent() {
-    const area = getCurrentArea();
-    const content = area.value.trim();
-    if (!content) return setStatus("EMPTY", "error");
+    const info = getCurrentData();
+    if (!info?.value) return setStatus("EMPTY", "error");
 
-    const url = getCurrentUrl();
+    const req = getCurrentUrlAndPayload();
+    if (!req) return setStatus("ERR", "error");
+
     setStatus("SAVING", "loading");
+    const area = currentTab === "checker" ? checkerCodeArea : (currentTab === "nicks" ? nicksArea : codeArea);
     area.disabled = true;
 
-    const payload = JSON.stringify(content);
-    fetch(url, {
+    fetch(req.url, {
       method: "PUT",
-      body: payload,
+      body: req.payload,
       headers: { "Content-Type": "application/json" }
     })
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then(() => setStatus("OK", "ok"))
-      .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
-      .finally(() => { area.disabled = false; area.focus(); });
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.text();
+    })
+    .then(() => setStatus("OK", "ok"))
+    .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
+    .finally(() => { area.disabled = false; area.focus(); });
   }
 
   function loadCurrent() {
-    const area = getCurrentArea();
-    const url = getCurrentUrl();
     setStatus("LOADING", "loading");
+    let area, url;
+    if (currentTab === "code") {
+      area = codeArea; url = CODE_URL;
+    } else if (currentTab === "nicks") {
+      area = nicksArea; url = NICKS_URL;
+    } else if (currentTab === "checker") {
+      const name = checkerNameInput.value.trim() || "main";
+      area = checkerCodeArea;
+      url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
+    } else return;
+
     area.disabled = true;
 
     fetch(url)
       .then(r => {
         if (!r.ok) {
-          if (r.status === 404 && currentTab === "nicks") {
-            // ✅ Если Firebase пуст — оставляем localStorage-значение (уже загружено выше)
-            setStatus("NO NICKS", "ok");
-            return;
+          if (r.status === 404) {
+            setStatus(currentTab === "checker" ? "NOT FOUND" : "EMPTY", "ok");
+            return null;
           }
           throw new Error(`HTTP ${r.status}`);
         }
         return r.text();
       })
       .then(text => {
-        if (!text || text === "null") return; // Firebase возвращает `"null"` как строку при пустом значении
+        if (!text || text === "null") return;
         let value = "";
         try {
           const data = JSON.parse(text);
@@ -239,45 +288,48 @@
         } catch (e) {
           value = text;
         }
-        // ✅ Только если успешно загружено из Firebase — перезаписываем localStorage-версию
         area.value = value;
         if (currentTab === "code") localStorage.setItem(LOCAL_CODE_KEY, value);
-        else localStorage.setItem(LOCAL_NICKS_KEY, value);
+        else if (currentTab === "nicks") localStorage.setItem(LOCAL_NICKS_KEY, value);
+        else if (currentTab === "checker") localStorage.setItem(LOCAL_CHECKER_CODE_KEY, value);
         setStatus("OK", "ok");
       })
-      .catch(err => {
-        // ❗ При ошибке — оставляем текущее значение (из localStorage или предыдущего ввода)
-        setStatus(`ERR: ${err.message || err}`, "error");
-      })
+      .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
       .finally(() => { area.disabled = false; area.focus(); });
   }
 
   function copyCurrent() {
-    const text = getCurrentArea().value;
+    let text = "";
+    if (currentTab === "code") text = codeArea.value;
+    else if (currentTab === "nicks") text = nicksArea.value;
+    else if (currentTab === "checker") text = checkerCodeArea.value;
+
     if (!text) return setStatus("EMPTY", "error");
+    
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text)
-        .then(() => setStatus("COPIED", "ok"))
-        .catch(() => fallbackCopy(getCurrentArea()));
+      navigator.clipboard.writeText(text).then(() => setStatus("COPIED", "ok"));
     } else {
-      fallbackCopy(getCurrentArea());
+      const tmp = document.createElement("textarea");
+      tmp.value = text;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+      setStatus("COPIED", "ok");
     }
   }
 
   function clearCurrent() {
-    const area = getCurrentArea();
-    if (area.value && !confirm(`Clear ${currentTab === "code" ? "code" : "nicks"}?`)) return;
-    area.value = "";
-    // ✅ Также очищаем localStorage
-    if (currentTab === "code") localStorage.removeItem(LOCAL_CODE_KEY);
-    else localStorage.removeItem(LOCAL_NICKS_KEY);
+    if (!confirm(`Clear ${currentTab}?`)) return;
+    if (currentTab === "code") { codeArea.value = ""; localStorage.removeItem(LOCAL_CODE_KEY); }
+    else if (currentTab === "nicks") { nicksArea.value = ""; localStorage.removeItem(LOCAL_NICKS_KEY); }
+    else if (currentTab === "checker") {
+      checkerCodeArea.value = "";
+      checkerNameInput.value = "";
+      localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
+      localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
+    }
     setStatus("CLEARED", "ok");
-  }
-
-  function fallbackCopy(el) {
-    el.select();
-    el.setSelectionRange(0, 99999);
-    document.execCommand("copy");
   }
 
   document.addEventListener("keydown", e => {
@@ -285,8 +337,8 @@
     if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); loadCurrent(); }
   });
 
-  // ⏳ Load from Firebase AFTER restoring from localStorage
+  // ⏳ Load initial tab
   loadCurrent();
-</script>
+  </script>
 </body>
 </html>
