@@ -112,8 +112,9 @@
       outline: 2px solid #555;
       outline-offset: -2px;
     }
-    textarea.hidden, input.hidden {
-      display: none;
+    /* 🔥 Гарантированное скрытие */
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
@@ -139,7 +140,8 @@
       <div class="content-area">
         <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
         <textarea id="nicks" class="hidden" spellcheck="false" placeholder="plr1,plr2,plr3 — one per line or comma-separated"></textarea>
-        <div id="checker" class="hidden" style="display:flex;flex-direction:column;">
+        <!-- 🔥 Теперь простой div без flex -->
+        <div id="checker" class="hidden">
           <textarea id="checker-code" spellcheck="false" placeholder="// Checker Lua code here..."></textarea>
           <input type="text" id="checker-name" placeholder="Enter checker name (optional)">
         </div>
@@ -148,10 +150,10 @@
   </div>
 
   <script>
-  // ✅ URLs
+  // ✅ URLs — убраны лишние пробелы в конце!
   const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
   const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
-  const CHECKER_URL = "https://checker-d6b5d-default-rtdb.firebaseio.com/"; // базовая ссылка
+  const CHECKER_URL = "https://checker-d6b5d-default-rtdb.firebaseio.com/";
 
   const LOCAL_CODE_KEY = "sstwendrt_code";
   const LOCAL_NICKS_KEY = "sstwendrt_nicks";
@@ -162,16 +164,16 @@
   const nicksArea = document.getElementById("nicks");
   const checkerCodeArea = document.getElementById("checker-code");
   const checkerNameInput = document.getElementById("checker-name");
+  const checkerWrap = document.getElementById("checker");
   const statusEl = document.getElementById("status");
   let currentTab = "code";
 
-  // 🔁 Restore from localStorage on init
+  // 🔁 Restore from localStorage
   codeArea.value = localStorage.getItem(LOCAL_CODE_KEY) || "";
   nicksArea.value = localStorage.getItem(LOCAL_NICKS_KEY) || "";
   checkerCodeArea.value = localStorage.getItem(LOCAL_CHECKER_CODE_KEY) || "";
   checkerNameInput.value = localStorage.getItem(LOCAL_CHECKER_NAME_KEY) || "";
 
-  // 📥 Save on input
   codeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CODE_KEY, codeArea.value));
   nicksArea.addEventListener("input", () => localStorage.setItem(LOCAL_NICKS_KEY, nicksArea.value));
   checkerCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_CODE_KEY, checkerCodeArea.value));
@@ -184,11 +186,16 @@
 
       document.querySelector(`.tab[data-tab="${currentTab}"]`).classList.remove("active");
       tab.classList.add("active");
-      currentTab = target;
 
-      codeArea.classList.toggle("hidden", currentTab !== "code");
-      nicksArea.classList.toggle("hidden", currentTab !== "nicks");
-      document.getElementById("checker").classList.toggle("hidden", currentTab !== "checker");
+      // 🔄 Скрываем всё, показываем только нужное
+      codeArea.classList.add("hidden");
+      nicksArea.classList.add("hidden");
+      checkerWrap.classList.add("hidden");
+
+      currentTab = target;
+      if (currentTab === "code") codeArea.classList.remove("hidden");
+      else if (currentTab === "nicks") nicksArea.classList.remove("hidden");
+      else if (currentTab === "checker") checkerWrap.classList.remove("hidden");
     });
   });
 
@@ -221,10 +228,16 @@
     } else if (data.key === "nicks") {
       return { url: NICKS_URL, payload: JSON.stringify(data.value) };
     } else if (data.key === "checker") {
-      // Отправляем по пути `/checkers/{name}.json`
       const url = `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`;
       return { url, payload: JSON.stringify(data.value) };
     }
+    return null;
+  }
+
+  function getActiveArea() {
+    if (currentTab === "code") return codeArea;
+    if (currentTab === "nicks") return nicksArea;
+    if (currentTab === "checker") return checkerCodeArea;
     return null;
   }
 
@@ -236,7 +249,7 @@
     if (!req) return setStatus("ERR", "error");
 
     setStatus("SAVING", "loading");
-    const area = currentTab === "checker" ? checkerCodeArea : (currentTab === "nicks" ? nicksArea : codeArea);
+    const area = getActiveArea();
     area.disabled = true;
 
     fetch(req.url, {
@@ -321,9 +334,13 @@
 
   function clearCurrent() {
     if (!confirm(`Clear ${currentTab}?`)) return;
-    if (currentTab === "code") { codeArea.value = ""; localStorage.removeItem(LOCAL_CODE_KEY); }
-    else if (currentTab === "nicks") { nicksArea.value = ""; localStorage.removeItem(LOCAL_NICKS_KEY); }
-    else if (currentTab === "checker") {
+    if (currentTab === "code") {
+      codeArea.value = "";
+      localStorage.removeItem(LOCAL_CODE_KEY);
+    } else if (currentTab === "nicks") {
+      nicksArea.value = "";
+      localStorage.removeItem(LOCAL_NICKS_KEY);
+    } else if (currentTab === "checker") {
       checkerCodeArea.value = "";
       checkerNameInput.value = "";
       localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
