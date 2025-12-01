@@ -201,7 +201,7 @@
     </div>
 
     <div class="input-group">
-      <input type="text" id="userInput" placeholder="Добавить запись...">
+      <input type="text" id="userInput" placeholder="Add Account">
       <button id="addBtn">Add</button>
     </div>
 
@@ -209,27 +209,23 @@
       <ul id="notesList" class="notes-list"></ul>
     </div>
 
-    <h2>📥 Requests (Nickname + Password)</h2>
-    <p style="color:#888; font-size:14px; margin-bottom:10px;">Заявки обновляются каждые 5 секунд</p>
+    <h2>Accounts Request</h2>
+    <p style="color:#888; font-size:14px; margin-bottom:10px;"></p>
     <div class="section">
       <ul id="requestsList" class="requests-list"></ul>
     </div>
 
-    <a id="submitLink" href="submit.html" target="_blank">→ Открыть форму отправки (submit.html)</a>
+    <a id="submitLink" href="submit.html" target="_blank"></a>
   </div>
 
   <script>
-    // === Основные переменные ===
     const input = document.getElementById('userInput');
     const addBtn = document.getElementById('addBtn');
     const notesList = document.getElementById('notesList');
     const requestsList = document.getElementById('requestsList');
     const counter = document.getElementById('counter');
     const FIREBASE_URL = 'https://fessfefs-26140-default-rtdb.firebaseio.com/requests.json';
-
     let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
-
-    // --- Вспомогательные функции ---
     function escapeHtml(text) {
       return text
         .replace(/&/g, '&amp;')
@@ -238,11 +234,9 @@
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
     }
-
     function updateCounter() {
       counter.textContent = notes.length;
     }
-
     function addNote(text) {
       if (!text.trim()) return;
       notes.push(text);
@@ -250,7 +244,6 @@
       renderNotes();
       updateCounter();
     }
-
     function renderNotes() {
       if (notes.length === 0) {
         notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
@@ -276,8 +269,6 @@
         });
       });
     }
-
-    // --- Работа с заявками из Firebase ---
     async function fetchRequests() {
       try {
         const res = await fetch(FIREBASE_URL);
@@ -293,12 +284,12 @@
           li.className = 'request-item';
           const nickname = escapeHtml(req.nickname || '—');
           const password = escapeHtml(req.password || '—');
-          const extra = req.extra ? `<br><span class="request-meta">💬 ${escapeHtml(req.extra)}</span>` : '';
+          const extra = req.extra ? `<br><span class="request-meta">${escapeHtml(req.extra)}</span>` : '';
           const timestamp = req.timestamp ? new Date(req.timestamp).toLocaleString('ru-RU') : '—';
           li.innerHTML = `
             <div class="request-text">
               <strong>${nickname}</strong>: ${password}${extra}
-              <div class="request-meta">⏱️ ${timestamp}</div>
+              <div class="request-meta">${timestamp}</div>
             </div>
             <div class="btn-group">
               <button class="request-accept" data-key="${key}" title="Accept">✅</button>
@@ -307,26 +298,19 @@
           `;
           requestsList.appendChild(li);
         }
-
-        // Обработчики кнопок
         document.querySelectorAll('.request-accept').forEach(btn => {
           btn.addEventListener('click', async () => {
             const key = btn.dataset.key;
             const req = data[key];
             if (!req) return;
-
-            // Формат: nickname: password [extra]
             const noteText = `${req.nickname}: ${req.password}${req.extra ? ' [' + req.extra + ']' : ''}`;
             addNote(noteText);
-
-            // Удаляем из Firebase
             await fetch(`https://fessfefs-26140-default-rtdb.firebaseio.com/requests/${key}.json`, {
               method: 'DELETE'
             });
-            fetchRequests(); // обновляем список
+            fetchRequests();
           });
         });
-
         document.querySelectorAll('.request-reject').forEach(btn => {
           btn.addEventListener('click', async () => {
             const key = btn.dataset.key;
@@ -338,21 +322,18 @@
         });
 
       } catch (err) {
-        console.error('Ошибка загрузки заявок:', err);
+        console.error('', err);
         requestsList.innerHTML = `<li class="empty-state">❌ Ошибка подключения к Firebase</li>`;
       }
     }
-
-    // --- Инициализация ---
     addBtn.addEventListener('click', () => addNote(input.value));
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') addNote(input.value);
     });
-
     renderNotes();
     updateCounter();
-    fetchRequests(); // первый запуск
-    setInterval(fetchRequests, 5000); // обновление каждые 5 сек
+    fetchRequests();
+    setInterval(fetchRequests, 1000); 
   </script>
 </body>
 </html>
