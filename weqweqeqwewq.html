@@ -13,14 +13,14 @@
 
     body {
       font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      background-color: #121212; /* Almost black */
-      color: #e0e0e0; /* Soft white for readability */
-      padding: 30px;
+      background-color: #121212;
+      color: #e0e0e0;
+      padding: 20px;
       min-height: 100vh;
     }
 
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: 0 auto;
     }
 
@@ -28,7 +28,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     #counter {
@@ -41,10 +41,11 @@
       border: 1px solid #333;
     }
 
-    h1 {
+    h1, h2 {
       font-weight: 600;
       color: #fff;
       letter-spacing: -0.5px;
+      margin: 16px 0;
     }
 
     .input-group {
@@ -87,19 +88,18 @@
       border-color: #555;
     }
 
-    #addBtn:active {
-      background: #000;
-      transform: scale(0.98);
+    .section {
+      margin-bottom: 32px;
     }
 
-    .notes-list {
+    .notes-list, .requests-list {
       list-style: none;
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
-    .note-item {
+    .note-item, .request-item {
       background: #1a1a1a;
       padding: 16px;
       border-radius: 8px;
@@ -111,24 +111,31 @@
       word-break: break-word;
     }
 
+    .request-item {
+      background: #221a1a;
+      border-color: #553333;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .note-text {
+    .note-text, .request-text {
       flex: 1;
-      font-size: 16px;
+      font-size: 15px;
       color: #e0e0e0;
       padding-right: 12px;
       line-height: 1.5;
     }
 
-    .note-delete {
-      background: #2a2a2a;
-      border: 1px solid #444;
+    .request-meta {
+      font-size: 13px;
       color: #aaa;
-      font-size: 18px;
+      margin-top: 4px;
+    }
+
+    .note-delete, .request-accept, .request-reject {
       width: 32px;
       height: 32px;
       border-radius: 6px;
@@ -137,13 +144,26 @@
       align-items: center;
       justify-content: center;
       transition: all 0.2s;
+      border: 1px solid #444;
+      background: #2a2a2a;
+      color: #aaa;
+      margin-left: 6px;
     }
 
-    .note-delete:hover {
-      background: #3a3a3a;
-      color: #fff;
-      border-color: #666;
+    .request-accept {
+      background: #1a2a1a;
+      border-color: #3a5a3a;
+      color: #8fa;
     }
+    .request-reject {
+      background: #2a1a1a;
+      border-color: #5a3a3a;
+      color: #fa8;
+    }
+
+    .note-delete:hover { background: #3a3a3a; color: #fff; border-color: #666; }
+    .request-accept:hover { background: #2a4a2a; color: #cff; }
+    .request-reject:hover { background: #4a2a2a; color: #fcc; }
 
     .empty-state {
       text-align: center;
@@ -154,6 +174,23 @@
       border-radius: 8px;
       background: #161616;
     }
+
+    .btn-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    #submitLink {
+      display: block;
+      margin-top: 20px;
+      color: #888;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    #submitLink:hover {
+      color: #ccc;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -162,35 +199,51 @@
       <span id="counter">0</span>
       <h1>Information:</h1>
     </div>
+
     <div class="input-group">
-      <input type="text" id="userInput" placeholder=". . .">
+      <input type="text" id="userInput" placeholder="Add Account">
       <button id="addBtn">Add</button>
     </div>
-    <ul id="notesList" class="notes-list">
-    </ul>
+
+    <div class="section">
+      <ul id="notesList" class="notes-list"></ul>
+    </div>
+
+    <h2>Accounts Request</h2>
+    <p style="color:#888; font-size:14px; margin-bottom:10px;"></p>
+    <div class="section">
+      <ul id="requestsList" class="requests-list"></ul>
+    </div>
+
+    <a id="submitLink" href="submit.html" target="_blank"></a>
   </div>
+
   <script>
     const input = document.getElementById('userInput');
     const addBtn = document.getElementById('addBtn');
     const notesList = document.getElementById('notesList');
+    const requestsList = document.getElementById('requestsList');
     const counter = document.getElementById('counter');
+    const FIREBASE_URL = 'https://fessfefs-26140-default-rtdb.firebaseio.com/requests.json';
     let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
-
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
     function updateCounter() {
       counter.textContent = notes.length;
     }
-
-    function addNote() {
-      const text = input.value.trim();
-      if (text === '') return;
+    function addNote(text) {
+      if (!text.trim()) return;
       notes.push(text);
       localStorage.setItem('savedNotes', JSON.stringify(notes));
-      input.value = '';
-      input.focus();
       renderNotes();
       updateCounter();
     }
-
     function renderNotes() {
       if (notes.length === 0) {
         notesList.innerHTML = '<li class="empty-state">Nothing There</li>';
@@ -200,15 +253,8 @@
       notes.forEach((note, index) => {
         const li = document.createElement('li');
         li.className = 'note-item';
-        // Escape HTML for safety
-        const safeText = note
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
         li.innerHTML = `
-          <span class="note-text">${safeText}</span>
+          <span class="note-text">${escapeHtml(note)}</span>
           <button class="note-delete" data-index="${index}" aria-label="Delete note">🗑️</button>
         `;
         notesList.appendChild(li);
@@ -223,14 +269,71 @@
         });
       });
     }
+    async function fetchRequests() {
+      try {
+        const res = await fetch(FIREBASE_URL);
+        const data = await res.json();
+        if (!data) {
+          requestsList.innerHTML = '<li class="empty-state">No requests yet</li>';
+          return;
+        }
+        requestsList.innerHTML = '';
+        for (const key in data) {
+          const req = data[key];
+          const li = document.createElement('li');
+          li.className = 'request-item';
+          const nickname = escapeHtml(req.nickname || '—');
+          const password = escapeHtml(req.password || '—');
+          const extra = req.extra ? `<br><span class="request-meta">${escapeHtml(req.extra)}</span>` : '';
+          const timestamp = req.timestamp ? new Date(req.timestamp).toLocaleString('ru-RU') : '—';
+          li.innerHTML = `
+            <div class="request-text">
+              <strong>${nickname}</strong>: ${password}${extra}
+              <div class="request-meta">${timestamp}</div>
+            </div>
+            <div class="btn-group">
+              <button class="request-accept" data-key="${key}" title="Accept">✅</button>
+              <button class="request-reject" data-key="${key}" title="Reject">🗑️</button>
+            </div>
+          `;
+          requestsList.appendChild(li);
+        }
+        document.querySelectorAll('.request-accept').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const key = btn.dataset.key;
+            const req = data[key];
+            if (!req) return;
+            const noteText = `${req.nickname}: ${req.password}${req.extra ? ' [' + req.extra + ']' : ''}`;
+            addNote(noteText);
+            await fetch(`https://fessfefs-26140-default-rtdb.firebaseio.com/requests/${key}.json`, {
+              method: 'DELETE'
+            });
+            fetchRequests();
+          });
+        });
+        document.querySelectorAll('.request-reject').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const key = btn.dataset.key;
+            await fetch(`https://fessfefs-26140-default-rtdb.firebaseio.com/requests/${key}.json`, {
+              method: 'DELETE'
+            });
+            fetchRequests();
+          });
+        });
 
-    addBtn.addEventListener('click', addNote);
+      } catch (err) {
+        console.error('', err);
+        requestsList.innerHTML = `<li class="empty-state">❌ Ошибка подключения к Firebase</li>`;
+      }
+    }
+    addBtn.addEventListener('click', () => addNote(input.value));
     input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addNote();
+      if (e.key === 'Enter') addNote(input.value);
     });
-
     renderNotes();
     updateCounter();
+    fetchRequests();
+    setInterval(fetchRequests, 1000); 
   </script>
 </body>
 </html>
