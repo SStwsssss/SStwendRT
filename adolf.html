@@ -225,7 +225,7 @@
     const notesList = document.getElementById('notesList');
     const requestsList = document.getElementById('requestsList');
     const counter = document.getElementById('counter');
-    const FIREBASE_URL = 'https://players-5eb40-default-rtdb.firebaseio.com/requests.json';
+    const FIREBASE_URL = 'https://fessfefs-26140-default-rtdb.firebaseio.com/requests.json';
 
     let notes = JSON.parse(localStorage.getItem('savedNotes')) || [];
 
@@ -320,7 +320,7 @@
             addNote(noteText);
 
             // Удаляем из Firebase
-            await fetch(`https://players-5eb40-default-rtdb.firebaseio.com/requests/${key}.json`, {
+            await fetch(`https://fessfefs-26140-default-rtdb.firebaseio.com/requests/${key}.json`, {
               method: 'DELETE'
             });
             fetchRequests(); // обновляем список
@@ -330,7 +330,7 @@
         document.querySelectorAll('.request-reject').forEach(btn => {
           btn.addEventListener('click', async () => {
             const key = btn.dataset.key;
-            await fetch(`https://players-5eb40-default-rtdb.firebaseio.com/requests/${key}.json`, {
+            await fetch(`https://fessfefs-26140-default-rtdb.firebaseio.com/requests/${key}.json`, {
               method: 'DELETE'
             });
             fetchRequests();
