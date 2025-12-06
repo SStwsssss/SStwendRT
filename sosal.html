@@ -2,313 +2,115 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>P.D.A Chat</title>
   <style>
-    :root {
-      --bg: #000;
-      --surface: #1a1a1a;
-      --border: #333;
-      --text: #e0e0e0;
-      --text-muted: #888;
-      --accent: #555;
-      --hover: #2a2a2a;
-      --sent: #444;
-      --received: #222;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      font-size: 16px;
-      background-color: var(--bg);
-      color: var(--text);
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 16px;
-      line-height: 1.5;
+      background: #000;
+      color: #ddd;
+      font: 16px system-ui, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 16px;
     }
-
-    header {
-      text-align: center;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    h1 {
-      font-weight: 600;
-      font-size: 28px;
-      letter-spacing: -0.5px;
-      color: #ccc;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
+    h2 { text-align: center; margin-bottom: 16px; color: #aaa; }
     #chat {
-      background-color: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      height: 360px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 6px;
+      height: 300px;
       overflow-y: auto;
-      padding: 16px;
-      font-size: 15px;
-      line-height: 1.6;
-      scroll-behavior: smooth;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
-
-    .message {
+      padding: 10px;
       margin-bottom: 12px;
-      padding: 8px 12px;
-      border-radius: 8px;
-      word-wrap: break-word;
-    }
-
-    .message.sent {
-      background-color: var(--sent);
-      margin-left: 24px;
-    }
-
-    .message.received {
-      background-color: var(--received);
-      margin-right: 24px;
-    }
-
-    .message time {
-      display: block;
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .nick {
-      font-weight: 600;
-      color: #b0b0b0;
-    }
-
-    .input-area {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    input, button {
-      padding: 10px 14px;
       font-size: 15px;
-      background-color: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      outline: none;
-      transition: all 0.2s ease;
     }
-
-    input:focus, button:focus {
-      border-color: #666;
-      box-shadow: 0 0 0 2px rgba(100, 100, 100, 0.3);
+    input, button {
+      background: #222;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 8px 10px;
     }
-
-    #nick {
-      flex: 1;
-      min-width: 140px;
-    }
-
-    #msg {
-      flex: 2;
-      min-width: 200px;
-    }
-
-    button {
-      background-color: var(--accent);
-      cursor: pointer;
-      font-weight: bold;
-      width: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    button:hover:not(:disabled) {
-      background-color: #666;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .init {
-      text-align: center;
-      padding: 20px;
-      color: var(--text-muted);
-      font-style: italic;
-    }
-
-    @media (max-width: 500px) {
-      #nick, #msg {
-        flex: 1 1 100%;
-      }
-      button {
-        width: 100%;
-      }
-    }
+    input:focus, button:focus { outline: none; border-color: #666; }
+    #nick { width: 30%; }
+    #msg { width: 50%; }
+    button { width: 14%; background: #333; cursor: pointer; }
+    button:disabled { opacity: 0.4; cursor: default; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>P.D.A</h1>
-  </header>
+  <h2>P.D.A</h2>
+  <div id="chat"></div>
+  <input id="nick" placeholder="Имя" maxlength="15">
+  <input id="msg" placeholder="Сообщение" disabled>
+  <button id="send" disabled>➤</button>
 
-  <div class="container">
-    <div id="chat">
-      <div class="init">Ожидание подключения...</div>
-    </div>
-
-    <div class="input-area">
-      <input type="text" id="nick" placeholder="Имя (латиница, до 15)" maxlength="15" autocomplete="off">
-      <input type="text" id="msg" placeholder="Сообщение" disabled autocomplete="off">
-      <button id="send" disabled>➤</button>
-    </div>
-  </div>
-
-  <!-- Firebase SDK (Compat Mode) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
   <script>
-    // === Firebase config (исправлен URL: убраны пробелы!)
-    const config = {
-      databaseURL: "https://my-chat-site-2d226-default-rtdb.firebaseio.com/"
-    };
+    // 🔥 ВАЖНО: замените на рабочий databaseURL — например:
+    // "https://fessfefs-26140-default-rtdb.firebaseio.com/"
+    const DB_URL = "https://my-chat-site-2d226-default-rtdb.firebaseio.com/"; // ← проверьте!
 
-    let db;
     try {
-      const app = firebase.initializeApp(config);
-      db = app.database();
+      firebase.initializeApp({ databaseURL: DB_URL });
     } catch (e) {
-      console.error('Firebase init failed:', e);
-      document.getElementById('chat').innerHTML = `<div class="init">❌ Ошибка подключения к чату</div>`;
+      console.warn("Firebase уже инициализирован или ошибка:", e);
     }
 
-    const chatEl = document.getElementById('chat');
+    const db = firebase.database();
+    const chat = document.getElementById('chat');
     const nickInp = document.getElementById('nick');
     const msgInp = document.getElementById('msg');
     const sendBtn = document.getElementById('send');
 
-    let userNick = localStorage.getItem('userNick') || null;
-
-    function validateNick(nick) {
-      return /^[a-zA-Z0-9_-]{1,15}$/.test(nick.trim());
-    }
-
-    // Восстанавливаем ник, если он есть
-    if (userNick && validateNick(userNick)) {
+    let userNick = localStorage.getItem('userNick');
+    if (userNick) {
       nickInp.value = userNick;
       nickInp.disabled = true;
       msgInp.disabled = false;
       sendBtn.disabled = false;
-      chatEl.innerHTML = ''; // убираем "ожидание"
-    } else {
-      userNick = null;
-      localStorage.removeItem('userNick');
     }
 
-    // Установка ника
-    nickInp.addEventListener('keypress', e => {
+    nickInp.onkeypress = e => {
       if (e.key === 'Enter' && !userNick) {
-        const raw = nickInp.value;
-        if (validateNick(raw)) {
-          userNick = raw.trim();
+        const n = nickInp.value.trim();
+        if (n) {
+          userNick = n;
           localStorage.setItem('userNick', userNick);
-          nickInp.value = userNick;
           nickInp.disabled = true;
           msgInp.disabled = false;
           sendBtn.disabled = false;
           msgInp.focus();
-          chatEl.innerHTML = ''; // чистим "ожидание"
-        } else {
-          nickInp.value = '';
-          nickInp.placeholder = 'Только a-z, 0-9, _-';
-          setTimeout(() => nickInp.placeholder = 'Имя (латиница, до 15)', 2000);
         }
       }
-    });
+    };
 
-    // Отправка
     function send() {
       const text = msgInp.value.trim();
-      if (!userNick || !text || !db) return;
-
-      // Отправляем с временной меткой (опционально)
-      db.ref('messages').push({
-        nick: userNick,
-        text: text,
-        ts: firebase.database.ServerValue.TIMESTAMP
-      });
-
-      // Очищаем
+      if (!userNick || !text) return;
+      db.ref('messages').push({ nick: userNick, text });
       msgInp.value = '';
-      msgInp.focus();
     }
 
-    sendBtn.addEventListener('click', send);
-    msgInp.addEventListener('keypress', e => {
-      if (e.key === 'Enter') send();
+    sendBtn.onclick = send;
+    msgInp.onkeypress = e => { if (e.key === 'Enter') send(); };
+
+    db.ref('messages').limitToLast(50).on('child_added', snap => {
+      const val = snap.val();
+      if (!val || !val.nick || !val.text) return;
+      const div = document.createElement('div');
+      div.innerHTML = `<b>${this.escape(val.nick)}</b>: ${this.escape(val.text)}`;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
     });
 
-    // Проверяем кнопку активности
-    msgInp.addEventListener('input', () => {
-      sendBtn.disabled = !msgInp.value.trim();
-    });
-
-    // Подписка на сообщения
-    if (db) {
-      db.ref('messages').limitToLast(100).on('child_added', snap => {
-        const data = snap.val();
-        if (!data || !data.nick || !data.text) return;
-
-        const div = document.createElement('div');
-        const time = data.ts ? new Date(data.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-
-        div.className = `message ${data.nick === userNick ? 'sent' : 'received'}`;
-        div.innerHTML = `
-          <span class="nick">${this.escapeHtml(data.nick)}</span>: 
-          ${this.escapeHtml(data.text)}
-          ${time ? `<time>${time}</time>` : ''}
-        `;
-
-        chatEl.appendChild(div);
-        chatEl.scrollTop = chatEl.scrollHeight;
-      });
-
-      // Успешное подключение — убираем "ожидание"
-      setTimeout(() => {
-        if (chatEl.querySelector('.init')) {
-          chatEl.innerHTML = '<div class="init">💬 Чат готов. Введите имя и нажмите Enter.</div>';
-        }
-      }, 1500);
-    }
-
-    // Вспомогательная функция против XSS
-    function escapeHtml(unsafe) {
-      return unsafe
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
+    // Простая экранировка
+    HTMLElement.prototype.escape = function (s) {
+      return String(s).replace(/[<>"&]/g, c => 
+        ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', '&': '&amp;' }[c])
+      );
+    };
   </script>
 </body>
 </html>
