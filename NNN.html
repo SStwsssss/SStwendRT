@@ -112,7 +112,6 @@
       outline: 2px solid #555;
       outline-offset: -2px;
     }
-    /* 🔥 Гарантированное скрытие */
     .hidden {
       display: none !important;
     }
@@ -125,6 +124,8 @@
         <div class="tab active" data-tab="code">Code</div>
         <div class="tab" data-tab="nicks">Players</div>
         <div class="tab" data-tab="checker">Checker</div>
+        <div class="tab" data-tab="custom-script">Custom Script</div>
+        <div class="tab" data-tab="custom-players">Custom Players</div>
         <span style="flex: 1;"></span>
       </div>
 
@@ -140,44 +141,69 @@
       <div class="content-area">
         <textarea id="code" spellcheck="false" placeholder="// Paste Lua code here..."></textarea>
         <textarea id="nicks" class="hidden" spellcheck="false" placeholder="plr1,plr2,plr3 — one per line or comma-separated"></textarea>
-        <!-- 🔥 Теперь простой div без flex -->
         <div id="checker" class="hidden">
           <textarea id="checker-code" spellcheck="false" placeholder="// Checker Lua code here..."></textarea>
           <input type="text" id="checker-name" placeholder="Enter checker name (optional)">
         </div>
+        <textarea id="custom-script" class="hidden" spellcheck="false" placeholder="// Custom Lua script here..."></textarea>
+        <textarea id="custom-players" class="hidden" spellcheck="false" placeholder="player&#10;,&#10;player&#10;,&#10;Player"></textarea>
       </div>
     </div>
   </div>
 
   <script>
-  // ✅ URLs — убраны лишние пробелы в конце!
   const CODE_URL = "https://access-code-8936a-default-rtdb.firebaseio.com/.json";
   const NICKS_URL = "https://accesnames-default-rtdb.firebaseio.com/nicks.json";
   const CHECKER_URL = "https://checker-d6b5d-default-rtdb.firebaseio.com/";
+  const CUSTOM_SCRIPT_URL = "https://dsasadasdsada-default-rtdb.firebaseio.com/.json";
+  const CUSTOM_PLAYERS_URL = "https://dfsfdfsdfsdf-a79bf-default-rtdb.firebaseio.com/.json";
 
   const LOCAL_CODE_KEY = "sstwendrt_code";
   const LOCAL_NICKS_KEY = "sstwendrt_nicks";
   const LOCAL_CHECKER_CODE_KEY = "sstwendrt_checker_code";
   const LOCAL_CHECKER_NAME_KEY = "sstwendrt_checker_name";
+  const LOCAL_CUSTOM_SCRIPT_KEY = "sstwendrt_custom_script";
+  const LOCAL_CUSTOM_PLAYERS_KEY = "sstwendrt_custom_players";
 
-  const codeArea = document.getElementById("code");
-  const nicksArea = document.getElementById("nicks");
-  const checkerCodeArea = document.getElementById("checker-code");
-  const checkerNameInput = document.getElementById("checker-name");
-  const checkerWrap = document.getElementById("checker");
+  const elements = {
+    code: document.getElementById("code"),
+    nicks: document.getElementById("nicks"),
+    "checker-code": document.getElementById("checker-code"),
+    "checker-name": document.getElementById("checker-name"),
+    "custom-script": document.getElementById("custom-script"),
+    "custom-players": document.getElementById("custom-players"),
+  };
+
   const statusEl = document.getElementById("status");
   let currentTab = "code";
 
-  // 🔁 Restore from localStorage
-  codeArea.value = localStorage.getItem(LOCAL_CODE_KEY) || "";
-  nicksArea.value = localStorage.getItem(LOCAL_NICKS_KEY) || "";
-  checkerCodeArea.value = localStorage.getItem(LOCAL_CHECKER_CODE_KEY) || "";
-  checkerNameInput.value = localStorage.getItem(LOCAL_CHECKER_NAME_KEY) || "";
+  // Restore from localStorage
+  Object.entries({
+    code: LOCAL_CODE_KEY,
+    nicks: LOCAL_NICKS_KEY,
+    "custom-script": LOCAL_CUSTOM_SCRIPT_KEY,
+    "custom-players": LOCAL_CUSTOM_PLAYERS_KEY,
+    "checker-code": LOCAL_CHECKER_CODE_KEY,
+    "checker-name": LOCAL_CHECKER_NAME_KEY,
+  }).forEach(([id, key]) => {
+    if (elements[id]) elements[id].value = localStorage.getItem(key) || "";
+  });
 
-  codeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CODE_KEY, codeArea.value));
-  nicksArea.addEventListener("input", () => localStorage.setItem(LOCAL_NICKS_KEY, nicksArea.value));
-  checkerCodeArea.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_CODE_KEY, checkerCodeArea.value));
-  checkerNameInput.addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_NAME_KEY, checkerNameInput.value));
+  // Save on input
+  Object.entries({
+    code: LOCAL_CODE_KEY,
+    nicks: LOCAL_NICKS_KEY,
+    "custom-script": LOCAL_CUSTOM_SCRIPT_KEY,
+    "custom-players": LOCAL_CUSTOM_PLAYERS_KEY,
+    "checker-code": LOCAL_CHECKER_CODE_KEY,
+  }).forEach(([id, key]) => {
+    if (elements[id]) {
+      elements[id].addEventListener("input", () => localStorage.setItem(key, elements[id].value));
+    }
+  });
+  if (elements["checker-name"]) {
+    elements["checker-name"].addEventListener("input", () => localStorage.setItem(LOCAL_CHECKER_NAME_KEY, elements["checker-name"].value));
+  }
 
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {
@@ -187,15 +213,16 @@
       document.querySelector(`.tab[data-tab="${currentTab}"]`).classList.remove("active");
       tab.classList.add("active");
 
-      // 🔄 Скрываем всё, показываем только нужное
-      codeArea.classList.add("hidden");
-      nicksArea.classList.add("hidden");
-      checkerWrap.classList.add("hidden");
+      // Hide all
+      ["code", "nicks", "checker", "custom-script", "custom-players"]
+        .forEach(id => {
+          if (id === "checker") document.getElementById("checker").classList.add("hidden");
+          else if (elements[id]) elements[id].classList.add("hidden");
+        });
 
       currentTab = target;
-      if (currentTab === "code") codeArea.classList.remove("hidden");
-      else if (currentTab === "nicks") nicksArea.classList.remove("hidden");
-      else if (currentTab === "checker") checkerWrap.classList.remove("hidden");
+      if (target === "checker") document.getElementById("checker").classList.remove("hidden");
+      else if (elements[target]) elements[target].classList.remove("hidden");
     });
   });
 
@@ -209,36 +236,40 @@
   }
 
   function getCurrentData() {
-    if (currentTab === "code") return { value: codeArea.value.trim(), key: "code" };
-    if (currentTab === "nicks") return { value: nicksArea.value.trim(), key: "nicks" };
-    if (currentTab === "checker") return {
-      value: checkerCodeArea.value.trim(),
-      name: checkerNameInput.value.trim() || "main",
-      key: "checker"
-    };
-    return null;
+    switch (currentTab) {
+      case "code": return { value: elements.code.value.trim(), key: "code" };
+      case "nicks": return { value: elements.nicks.value.trim(), key: "nicks" };
+      case "checker": return {
+        value: elements["checker-code"].value.trim(),
+        name: elements["checker-name"].value.trim() || "main",
+        key: "checker"
+      };
+      case "custom-script": return { value: elements["custom-script"].value.trim(), key: "custom-script" };
+      case "custom-players": return { value: elements["custom-players"].value.trim(), key: "custom-players" };
+      default: return null;
+    }
   }
 
   function getCurrentUrlAndPayload() {
     const data = getCurrentData();
     if (!data?.value) return null;
 
-    if (data.key === "code") {
-      return { url: CODE_URL, payload: JSON.stringify(data.value) };
-    } else if (data.key === "nicks") {
-      return { url: NICKS_URL, payload: JSON.stringify(data.value) };
-    } else if (data.key === "checker") {
-      const url = `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`;
-      return { url, payload: JSON.stringify(data.value) };
+    switch (data.key) {
+      case "code": return { url: CODE_URL, payload: JSON.stringify(data.value) };
+      case "nicks": return { url: NICKS_URL, payload: JSON.stringify(data.value) };
+      case "checker": return {
+        url: `${CHECKER_URL}checkers/${encodeURIComponent(data.name)}.json`,
+        payload: JSON.stringify(data.value)
+      };
+      case "custom-script": return { url: CUSTOM_SCRIPT_URL, payload: JSON.stringify(data.value) };
+      case "custom-players": return { url: CUSTOM_PLAYERS_URL, payload: JSON.stringify(data.value) };
+      default: return null;
     }
-    return null;
   }
 
   function getActiveArea() {
-    if (currentTab === "code") return codeArea;
-    if (currentTab === "nicks") return nicksArea;
-    if (currentTab === "checker") return checkerCodeArea;
-    return null;
+    if (currentTab === "checker") return elements["checker-code"];
+    return elements[currentTab];
   }
 
   function sendCurrent() {
@@ -250,7 +281,7 @@
 
     setStatus("SAVING", "loading");
     const area = getActiveArea();
-    area.disabled = true;
+    if (area) area.disabled = true;
 
     fetch(req.url, {
       method: "PUT",
@@ -263,37 +294,40 @@
     })
     .then(() => setStatus("OK", "ok"))
     .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
-    .finally(() => { area.disabled = false; area.focus(); });
+    .finally(() => { if (area) area.disabled = false; area?.focus(); });
   }
 
   function loadCurrent() {
     setStatus("LOADING", "loading");
-    let area, url;
-    if (currentTab === "code") {
-      area = codeArea; url = CODE_URL;
-    } else if (currentTab === "nicks") {
-      area = nicksArea; url = NICKS_URL;
-    } else if (currentTab === "checker") {
-      const name = checkerNameInput.value.trim() || "main";
-      area = checkerCodeArea;
-      url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
-    } else return;
 
-    area.disabled = true;
+    let area, url;
+    switch (currentTab) {
+      case "code": area = elements.code; url = CODE_URL; break;
+      case "nicks": area = elements.nicks; url = NICKS_URL; break;
+      case "checker": {
+        const name = elements["checker-name"].value.trim() || "main";
+        area = elements["checker-code"];
+        url = `${CHECKER_URL}checkers/${encodeURIComponent(name)}.json`;
+        break;
+      }
+      case "custom-script": area = elements["custom-script"]; url = CUSTOM_SCRIPT_URL; break;
+      case "custom-players": area = elements["custom-players"]; url = CUSTOM_PLAYERS_URL; break;
+      default: return;
+    }
+
+    if (area) area.disabled = true;
 
     fetch(url)
       .then(r => {
-        if (!r.ok) {
-          if (r.status === 404) {
-            setStatus(currentTab === "checker" ? "NOT FOUND" : "EMPTY", "ok");
-            return null;
-          }
-          throw new Error(`HTTP ${r.status}`);
-        }
+        if (r.status === 404) return "null";
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.text();
       })
       .then(text => {
-        if (!text || text === "null") return;
+        if (!text || text === "null") {
+          setStatus(currentTab === "checker" ? "NOT FOUND" : "EMPTY", "ok");
+          return;
+        }
         let value = "";
         try {
           const data = JSON.parse(text);
@@ -302,20 +336,25 @@
           value = text;
         }
         area.value = value;
-        if (currentTab === "code") localStorage.setItem(LOCAL_CODE_KEY, value);
-        else if (currentTab === "nicks") localStorage.setItem(LOCAL_NICKS_KEY, value);
-        else if (currentTab === "checker") localStorage.setItem(LOCAL_CHECKER_CODE_KEY, value);
+        const keyMap = {
+          "code": LOCAL_CODE_KEY,
+          "nicks": LOCAL_NICKS_KEY,
+          "checker-code": LOCAL_CHECKER_CODE_KEY,
+          "custom-script": LOCAL_CUSTOM_SCRIPT_KEY,
+          "custom-players": LOCAL_CUSTOM_PLAYERS_KEY,
+        };
+        const storageKey = keyMap[currentTab === "checker" ? "checker-code" : currentTab];
+        if (storageKey) localStorage.setItem(storageKey, value);
         setStatus("OK", "ok");
       })
       .catch(err => setStatus(`ERR: ${err.message || err}`, "error"))
-      .finally(() => { area.disabled = false; area.focus(); });
+      .finally(() => { if (area) area.disabled = false; area?.focus(); });
   }
 
   function copyCurrent() {
     let text = "";
-    if (currentTab === "code") text = codeArea.value;
-    else if (currentTab === "nicks") text = nicksArea.value;
-    else if (currentTab === "checker") text = checkerCodeArea.value;
+    if (currentTab === "checker") text = elements["checker-code"].value;
+    else text = elements[currentTab]?.value || "";
 
     if (!text) return setStatus("EMPTY", "error");
     
@@ -334,18 +373,21 @@
 
   function clearCurrent() {
     if (!confirm(`Clear ${currentTab}?`)) return;
-    if (currentTab === "code") {
-      codeArea.value = "";
-      localStorage.removeItem(LOCAL_CODE_KEY);
-    } else if (currentTab === "nicks") {
-      nicksArea.value = "";
-      localStorage.removeItem(LOCAL_NICKS_KEY);
-    } else if (currentTab === "checker") {
-      checkerCodeArea.value = "";
-      checkerNameInput.value = "";
-      localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
-      localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
-    }
+
+    const clearMap = {
+      "code": () => { elements.code.value = ""; localStorage.removeItem(LOCAL_CODE_KEY); },
+      "nicks": () => { elements.nicks.value = ""; localStorage.removeItem(LOCAL_NICKS_KEY); },
+      "checker": () => {
+        elements["checker-code"].value = "";
+        elements["checker-name"].value = "";
+        localStorage.removeItem(LOCAL_CHECKER_CODE_KEY);
+        localStorage.removeItem(LOCAL_CHECKER_NAME_KEY);
+      },
+      "custom-script": () => { elements["custom-script"].value = ""; localStorage.removeItem(LOCAL_CUSTOM_SCRIPT_KEY); },
+      "custom-players": () => { elements["custom-players"].value = ""; localStorage.removeItem(LOCAL_CUSTOM_PLAYERS_KEY); },
+    };
+
+    clearMap[currentTab]?.();
     setStatus("CLEARED", "ok");
   }
 
@@ -354,7 +396,6 @@
     if ((e.ctrlKey || e.metaKey) && e.key === "r") { e.preventDefault(); loadCurrent(); }
   });
 
-  // ⏳ Load initial tab
   loadCurrent();
   </script>
 </body>
